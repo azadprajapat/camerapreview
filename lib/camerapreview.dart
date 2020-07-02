@@ -28,43 +28,14 @@ class Home extends StatefulWidget {
   _HomeState createState() => _HomeState();
 }
 
-class _HomeState extends State<Home> {
-List<ui.Image> imgframelist=[];
+class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
+
+  List<ui.Image> imgframelist=[];
   camera_.CameraController _controller;
   Future<void> _initialiseControllerFuture;
   var pitch;
   var roll;
-  List _list2=[{"A": "100", "E": "20"},
-    {"A": "120", "E": "20"},
-    {"A": "140", "E": "20"},
-    {"A": "160", "E": "20"},
-    {"A": "180", "E": "20"},
-    {"A": "200", "E": "20"},
-    {"A": "220", "E": "20"},
-    {"A": "240", "E": "20"},
-    {"A": "260", "E": "20"},
-    {"A": "100", "E": "40"},
-    {"A": "125", "E": "40"},
-    {"A": "150", "E": "40"},
-    {"A": "175", "E": "40"},
-    {"A": "200", "E": "40"},
-    {"A": "225", "E": "40"},
-    {"A": "250", "E": "40"},
-    {"A": "100", "E": "60"},
-    {"A": "130", "E": "60"},
-    {"A": "160", "E": "60"},
-    {"A": "190", "E": "60"},
-    {"A": "220", "E": "60"},
-    {"A": "250", "E": "60"},
-    {"A": "100", "E": "80"},
-    {"A": "135", "E": "80"},
-    {"A": "170", "E": "80"},
-    {"A": "205", "E": "80"},
-    {"A": "240", "E": "80"},
-    {"A": "100", "E": "85"},
-    {"A": "180", "E": "85"},
-    {"A": "260", "E": "85"},];
-  List _list1 = [
+    List _list1 = [
     {"A": "110", "E": "22"},
     {"A": "145", "E": "22"},
     {"A": "180", "E": "22"},
@@ -123,7 +94,7 @@ List<ui.Image> imgframelist=[];
     });
 
     });
-  }
+    }
 
   @override
   void dispose() {
@@ -134,7 +105,7 @@ List<ui.Image> imgframelist=[];
       _streamSubscriptions2.cancel();
     }
     _controller.dispose();
-    super.dispose();
+     super.dispose();
   }
 
   Widget build(BuildContext context) {
@@ -190,18 +161,28 @@ List<ui.Image> imgframelist=[];
             padding: EdgeInsets.only(bottom: 30),
              child: number!=0?CustomPaint(
                foregroundPainter: ProgressPainer(number/15),
-               child: Container(
-                height: 60,
-                width: 60,
-                child: Center(child: Icon(Icons.check,color: Colors.green,size: 30,),),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(35),
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(color: Colors.black,blurRadius: 7.0)
-                  ]
-                ),
-            ),
+               child:   GestureDetector(
+                 onTap: (){
+                   if(number==15){
+                     _controller.dispose();
+                     Navigator.push(context, MaterialPageRoute(builder: (BuildContext context)=>ResultPage(_imglist)));
+                   }
+                 },
+                 child: Container(
+                   height: 60,
+                   width: 60,
+                   child: Center(child: number==15?Icon(Icons.check,color: Colors.green,size: 30,):
+                   Text("${((number*100)/15).toInt()}%",style: TextStyle(fontSize: 18),)
+                   ),
+                   decoration: BoxDecoration(
+                       borderRadius: BorderRadius.circular(35),
+                       color: Colors.white,
+                       boxShadow: [
+                         BoxShadow(color: Colors.black,blurRadius: 5.0)
+                       ]
+                   ),
+                 ),
+               )
              ):Container(
                child: Text("Point the camera at the dot",style: TextStyle(color: Colors.white,fontSize: 20,),),
              ),
@@ -228,7 +209,6 @@ List<ui.Image> imgframelist=[];
       number++;
       _visible_point_list.removeAt(index);
     });
-
     _list.forEach((element) {
      var _listA=int.parse(element.A);
      var _listE=int.parse(element.E);
@@ -285,8 +265,8 @@ class ProgressPainer extends CustomPainter {
     Paint pt= new Paint()
     ..color=Colors.green
     ..style=PaintingStyle.stroke
-    ..strokeWidth=5;
-    canvas.drawArc(Rect.fromCircle(center:Offset(size.width/2,size.height/2),radius: 32), -pi/2, pi*prgress*2, false, pt);
+    ..strokeWidth=10;
+    canvas.drawArc(Rect.fromCircle(center:Offset(size.width/2,size.height/2),radius: 35), -pi/2, pi*prgress*2, false, pt);
    // canvas.drawCircle(Offset(size.width/2,size.height/2), 32, pt);
   }
 
