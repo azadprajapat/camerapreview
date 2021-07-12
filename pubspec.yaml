@@ -28,7 +28,6 @@ dependencies:
   aeyrium_sensor: ^1.0.7
   path_provider:
   path:
-  bot_toast: ^3.0.0
 
 dev_dependencies:
   flutter_test:

@@ -4,7 +4,6 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:aeyrium_sensor/aeyrium_sensor.dart';
-import 'package:bot_toast/bot_toast.dart';
 import 'package:camera/camera.dart' as camera_;
 import 'package:camera/new/camera.dart';
 import 'package:cameraviewer/painter.dart';
