@@ -28,6 +28,7 @@ dependencies:
   aeyrium_sensor: ^1.0.7
   path_provider:
   path:
+  image: ^3.0.2
 
 dev_dependencies:
   flutter_test:
