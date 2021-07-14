@@ -29,6 +29,7 @@ dependencies:
   path_provider:
   path:
   image: ^3.0.2
+  geolocator:
 
 dev_dependencies:
   flutter_test:

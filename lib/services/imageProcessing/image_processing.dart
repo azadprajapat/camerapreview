@@ -1,6 +1,10 @@
 import 'package:cameraviewer/modals/camera_model.dart';
+import 'package:cameraviewer/modals/sun_models.dart';
+import 'package:cameraviewer/services/get_location.dart';
+import 'package:cameraviewer/services/imageProcessing/sun_position.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:async';
 import 'dart:io';
@@ -62,26 +66,34 @@ class ImageProcessing{
     },
   };
 
-  Future<void> calculate()async{
+  Future<int> calculate(File image_files,DateTime time,Function callback)async{
     List<Image_set> images=[];
+    callback("reading camera hardware data");
     CameraModel cameraModel = await get_camera_hardware();
-    for(int i=1;i<13;i++){
-      File img = await getImageFileFromAssets("assets/test/img${13-i}_raw.jpg");
-      images.add(Image_set(Imagepath: img.path,azimuth: angles[i]["A"],elevation: angles[i]["E"]));
+    callback("reading the images");
+    for(int i=0;i<12;i++){
+      images.add(Image_set(Imagepath: image_files.path,azimuth: angles[i]["A"],elevation: angles[i]["E"]));
     }
-
+    callback("processing images it may take some time");
     print("Now we have each and every image with their azimuth and elevation angle");
-   await processimage(images, cameraModel.focal_length.toDouble());
+    List<List<int>> result_matrix=await processimage(images, cameraModel.focal_length.toDouble(),callback);
+   //get lat and long of user;
+    callback("getting your location");
+    Position user_location =await fetch_user_location();
+    callback("geting the suposition");
+    SunPos position = await SunPosition().calculate(SunPosEstimateData(time: time,lat:user_location.latitude.toString() ,long:user_location.longitude.toString() ));
+    callback("completed");
+    return result_matrix[(position.azimuth*10).toInt()][(position.elevation*10).toInt()];
   }
 
 
-
-  Future<List<List<int>>> processimage(List<Image_set> images, double focal_length)async{
+  Future<List<List<int>>> processimage(List<Image_set> images, double focal_length,Function callback)async{
     int row = 910;
     int col = 3610;
     var matrix = List<List<int>>.generate(
         col, (i) => List<int>.generate(row, (j) => 1));
 
+    callback("decoding and getting angles of images");//
     for(int k=0;k<12;k++){
       final image = await IMG.decodeImage(File(images[k].Imagepath).readAsBytesSync());
       for(int i=0;i<image.height;i++){
@@ -129,24 +141,27 @@ class ImageProcessing{
           matrix[Azi][Elev] = result;
         }
       }
+      if(k==6){
+         callback("50% images converted");
+      }
     }
     // List<List<int>> pixel_matrix=[];
     // print(image.height);
-    print("Image is successfully converted to matrix");
-    final directory = await getExternalStorageDirectories(type: StorageDirectory.documents);
-    File file= File(directory[0].path+"result.txt");
-      await file.writeAsString(matrix.toString());
-    print("File writed successfully");
+    // print("Image is successfully converted to matrix");
+    // final directory = await getExternalStorageDirectories(type: StorageDirectory.documents);
+    // File file= File(directory[0].path+"result.txt");
+    //   await file.writeAsString(matrix.toString());
+    // print("File writed successfully");
     return matrix;
   }
-  Future<File> getImageFileFromAssets(String path) async {
-    print("Getting file from assets");
-    final byteData = await rootBundle.load('$path');
-    print("Read from assets done");
-   List<String> end = path.split("/");
-    final file = File('${(await getApplicationDocumentsDirectory()).path}/${end[end.length-1]}');
-    print("writing to file");
-    await file.writeAsBytes(byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
-    return file;
-  }
+  // Future<File> getImageFileFromAssets(String path) async {
+  //   print("Getting file from assets");
+  //   final byteData = await rootBundle.load('$path');
+  //   print("Read from assets done");
+  //  List<String> end = path.split("/");
+  //   final file = File('${(await getApplicationDocumentsDirectory()).path}/${end[end.length-1]}');
+  //   print("writing to file");
+  //   await file.writeAsBytes(byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
+  //   return file;
+  // }
 }
