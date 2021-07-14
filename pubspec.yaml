@@ -29,6 +29,9 @@ dependencies:
   path_provider:
   path:
   image: ^3.0.2
+  multi_image_picker:
+  permission_handler:
+  flutter_datetime_picker:
 
 dev_dependencies:
   flutter_test:
