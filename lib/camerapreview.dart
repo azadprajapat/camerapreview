@@ -35,24 +35,21 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   var pitch;
   var roll;
     List _list1 = [
-    {"A": "110", "E": "22"},
-    {"A": "145", "E": "22"},
-    {"A": "180", "E": "22"},
-    {"A": "215", "E": "22"},
-    {"A": "250", "E": "22"},
-    {"A": "110", "E": "44"},
-    {"A": "145", "E": "44"},
-    {"A": "180", "E": "44"},
-    {"A": "215", "E": "44"},
-    {"A": "250", "E": "44"},
-    {"A": "110", "E": "66"},
-    {"A": "145", "E": "66"},
-    {"A": "180", "E": "66"},
-    {"A": "215", "E": "66"},
-    {"A": "250", "E": "66"},
+      {"A": "110", "E": "30"},
+      {"A": "140", "E": "30"},
+      {"A": "170", "E": "30"},
+      {"A": "200", "E": "30"},
+      {"A": "230", "E": "30"},
+      {"A": "260", "E": "30"},
+      {"A": "260", "E": "60"},
+      {"A": "230", "E": "60"},
+      {"A": "200", "E": "60"},
+      {"A": "170", "E": "60"},
+      {"A": "140", "E": "60"},
+      {"A": "110", "E": "60"},
   ];
   List<Points> _list = List<Points>();
-  List<Points> _visible_point_list = List<Points>();
+  Points capture_point;
   int list_index;
   int number = 0;
   List<Image_set> _imglist = [];
@@ -65,7 +62,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     _list1.forEach((element) {
       _list.add(Points(A: element['A'], E: element['E']));
     });
-    _visible_point_list.add(_list[0]);
+    capture_point =_list[0];
       print("# STATUS 200 VISIBLE LIST");
     super.initState();
     _streamSubscriptions = AeyriumSensor.sensorEvents.listen((event) {
@@ -82,15 +79,13 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     _controller = camera_.CameraController(
         widget.camera, camera_.ResolutionPreset.medium);
     _initialiseControllerFuture = _controller.initialize();
-    Timer.periodic(Duration(seconds: 1), (timer) {
-    _visible_point_list.forEach((element) {
-      var current_A=int.parse(element.A);
-      var current_E=int.parse(element.E);
+    Timer.periodic(Duration(seconds: 1), (timer) async{
+      var current_A=int.parse(capture_point.A);
+      var current_E=int.parse(capture_point.E);
       if(current_A-azimuth<=1&&current_A-azimuth>=-1&&current_E-pitch>=-1&&current_E-pitch<=1&&roll==0){
-        TakePhoto(_visible_point_list.indexOf(element),current_A,current_E);
+       await TakePhoto(current_A,current_E,context);
         print("# STATUS 200 PHOTO CAPTURED");
       }
-    });
 
     });
     }
@@ -139,7 +134,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
               ImgList: _imglist,
               list: _list,
               img: imgframelist,
-              visible_list: _visible_point_list),
+              capture_point: capture_point),
           child: FutureBuilder<void>(
             future: _initialiseControllerFuture,
             builder: (context, snapshot) {
@@ -159,19 +154,18 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
             alignment: Alignment.bottomCenter,
             padding: EdgeInsets.only(bottom: 30),
              child: number!=0?CustomPaint(
-               foregroundPainter: ProgressPainer(number/15),
+               foregroundPainter: ProgressPainer(number/12),
                child:   GestureDetector(
                  onTap: (){
-                   if(number==15){
-                     _controller.dispose();
+                   if(number==12){
                      Navigator.push(context, MaterialPageRoute(builder: (BuildContext context)=>ResultPage(_imglist)));
                    }
                  },
                  child: Container(
                    height: 60,
                    width: 60,
-                   child: Center(child: number==15?Icon(Icons.check,color: Colors.green,size: 30,):
-                   Text("${((number*100)/15).toInt()}%",style: TextStyle(fontSize: 18),)
+                   child: Center(child: number==12?Icon(Icons.check,color: Colors.green,size: 30,):
+                   Text("${((number*100)/12).toInt()}%",style: TextStyle(fontSize: 18),)
                    ),
                    decoration: BoxDecoration(
                        borderRadius: BorderRadius.circular(35),
@@ -192,7 +186,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     );
   }
 
-  void TakePhoto(int index,int current_A,int current_E) async {
+  void TakePhoto(int current_A,int current_E,context) async {
     await _initialiseControllerFuture;
    final path =
         join((await getTemporaryDirectory()).path, '${DateTime.now()}.png');
@@ -206,44 +200,11 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     setState(() {
       imgframelist.add(img);
       number++;
-      _visible_point_list.removeAt(index);
-    });
-    _list.forEach((element) {
-     var _listA=int.parse(element.A);
-     var _listE=int.parse(element.E);
-     if(_listA-current_A==0&&_listE-current_E==0){
-       print("#3 STATUS 200");
-       setState(() {
-         list_index=_list.indexOf(element);
-       });
-       print("#4 STATUS 200");
-       return null;
-     }
-   });
-    setState(() {
-      _list.removeAt(list_index);
-    });
-    print("#5 STATUS 200 ${_list.length}");
-    _list.forEach((element) {
-      var _listA=int.parse(element.A);
-      var _listE=int.parse(element.E);
-      if((_listA-current_A<40&&(_listA-current_A>0)&&(_listE-current_E)==0)
-          ||(_listA-current_A>-40&&(_listA-current_A<0)&&(_listE-current_E)==0)
-          ||(_listA-current_A==0&&(_listE-current_E)<25&&(_listE-current_E)>0)
-          ||(_listA-current_A==0&&(_listE-current_E)>-25&&(_listE-current_E)<0)){
-        print("#6 STATUS 200");
-        setState(() {
-          if(!_visible_point_list.contains(element)) {
-            _visible_point_list.add(element);
-          }
-      });
+      if(number!=12) {
+        capture_point = _list[number];
       }
+    });
 
-    });
-    print("#7 STATUS 200 ${_visible_point_list.length} & ${_list.length}");
-    _visible_point_list.forEach((element) {
-      print("${element.A} & ${element.E}");
-    });
   }
   Future<ui.Image> loadUiImage(int k) async {
      final data2= await File(_imglist[k].Imagepath).readAsBytes();

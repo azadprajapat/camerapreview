@@ -1,6 +1,7 @@
 
 import 'dart:io';
 import 'dart:math';
+import 'package:cameraviewer/camerapreview.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
 
@@ -16,10 +17,10 @@ class MyPainter extends CustomPainter{
   final azimuth;
   final n;
   final list;
-  final visible_list;
+  final capture_point;
   final List<ui.Image> img;
 
-  MyPainter({this.pitch,this.screen,this.azimuth,this.roll,this.ImgList,this.n,this.list,this.visible_list,this.img});
+  MyPainter({this.pitch,this.screen,this.azimuth,this.roll,this.ImgList,this.n,this.list,this.capture_point,this.img});
   @override
 
 
@@ -75,7 +76,7 @@ class MyPainter extends CustomPainter{
             canvas.drawImageNine(img[i], Rect.fromPoints(Offset(cx1,cy1), Offset(cx1,cy1)), Rect.fromPoints(Offset(cx1-size.width/3.6,cy1-size.height/4.4), Offset(cx1+size.width/3.6,cy1+size.height/4.4)), Captured);
           }
      }
-    visible_list.forEach((element){
+    Points  element = capture_point;
       var start_P1_x;
       var start_P1_y;
       var x;
@@ -84,7 +85,7 @@ class MyPainter extends CustomPainter{
       start_P1_y = ((pitch-int.parse(element.E))*screen.height/52.09);
       x =  ((start_P1_x*cos(roll)-start_P1_y*sin(-roll))+screen.width/2);
       y =  ((start_P1_x*sin(-roll)+start_P1_y*cos(roll))+screen.height/2);
-          if(roll==0){
+          if(roll==0&&n<12){
             canvas.drawCircle(Offset(x, y), 25, circle);
           }
       if(n==0){
@@ -103,7 +104,6 @@ class MyPainter extends CustomPainter{
           canvas.drawPath(path4, Center_circle);
         }
       }
-    });
      canvas.drawRect(Rect.fromPoints(Offset((screen.width-c_width)/2,(screen.height-c_heigth)/2), Offset((screen.width+c_width)/2,(screen.height+c_heigth)/2)), Center_circle);
     canvas.drawCircle(Offset(x_center,y_center), 30, Center_circle);
   }
