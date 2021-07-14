@@ -29,9 +29,13 @@ dependencies:
   path_provider:
   path:
   image: ^3.0.2
+<<<<<<< HEAD
   multi_image_picker:
   permission_handler:
   flutter_datetime_picker:
+=======
+  geolocator:
+>>>>>>> 6cb4196e24dd1580b8cc575f50c90c4513c76dc3
 
 dev_dependencies:
   flutter_test:
