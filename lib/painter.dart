@@ -2,6 +2,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:cameraviewer/camerapreview.dart';
+import 'package:cameraviewer/modals/camera_model.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
 
@@ -15,12 +16,13 @@ class MyPainter extends CustomPainter{
   final roll;
   final ImgList;
   final azimuth;
+  final CameraModel model;
   final n;
   final list;
   final capture_point;
   final List<ui.Image> img;
 
-  MyPainter({this.pitch,this.screen,this.azimuth,this.roll,this.ImgList,this.n,this.list,this.capture_point,this.img});
+  MyPainter({this.model,this.pitch,this.screen,this.azimuth,this.roll,this.ImgList,this.n,this.list,this.capture_point,this.img});
   @override
 
 
@@ -65,24 +67,45 @@ class MyPainter extends CustomPainter{
     path4.lineTo(x_center+50, y_center+15);
     path4.close();
 
+
     //working with image display on the screen
     if(n!=0){
          for(int i=0;i<n;i++) {
-          var e=ImgList[i].azimuth;
-            var cx1 = ((e- azimuth) * screen.width / 66.19) +
-                screen.width / 2;
-            var cy1 = ((pitch - ImgList[i].elevation) * screen.height / 52.09) +
-                screen.height / 2;
-            canvas.drawImageNine(img[i], Rect.fromPoints(Offset(cx1,cy1), Offset(cx1,cy1)), Rect.fromPoints(Offset(cx1-size.width/3.6,cy1-size.height/4.4), Offset(cx1+size.width/3.6,cy1+size.height/4.4)), Captured);
-          }
+          var A=ImgList[i].azimuth;
+          var E= ImgList[i].elevation;
+          double h_f = model.sensorw/img[i].height;
+          double w_f = model.sensorh/img[i].width;
+         // var cx1 = atan((A-azimuth)*pi/180)*model.focal_length/w_f;
+         // var cy1=  atan((E-pitch)*pi/180)*model.focal_length/h_f;
+
+          var cx1 = 2*tan((A-azimuth)*pi/360)*model.focal_length/w_f+screen.width/2;
+          var cy1 =  2*tan((pitch-E)*pi/360)*model.focal_length/h_f+screen.height/2;
+
+          var l_t_a = A-model.hfv/2;
+          var l_t_e = E+ model.vfv/2;
+          var r_b_a = A+model.hfv/2;
+          var r_b_e = E- model.vfv/2;
+          var l_t_x = 2*tan((l_t_a-azimuth)*pi/360)*model.focal_length/w_f+screen.width/2;
+          var l_t_y =  2*tan((pitch-l_t_e)*pi/360)*model.focal_length/h_f+screen.height/2;
+          var r_b_x = 2*tan((r_b_a-azimuth)*pi/360)*model.focal_length/w_f+screen.width/2;
+          var r_b_y =  2*tan((pitch-r_b_e)*pi/360)*model.focal_length/h_f+screen.height/2;
+         canvas.drawImageNine(img[i], Rect.fromPoints(Offset(cx1,cy1), Offset(cx1,cy1)), Rect.fromPoints(Offset(l_t_x,l_t_y), Offset(r_b_x,r_b_y)), Captured);
+       //   canvas.drawImageNine(img[i], Rect.fromPoints(Offset(cx1,cy1), Offset(cx1,cy1)), Rect.fromPoints(Offset(cx1-img[i].width/2,cy1-img[i].height/2), Offset(cx1+img[i].width/2,cy1+img[i].height/2)), Captured);
+           //   canvas.drawImageNine(img[i], Rect.fromPoints(Offset(cx1,cy1), Offset(cx1,cy1)), Rect.fromPoints(Offset(l_t_x,l_t_y), Offset(r_b_x,r_b_y)), Captured);
+
+         }
      }
     Points  element = capture_point;
       var start_P1_x;
       var start_P1_y;
       var x;
       var y;
-      start_P1_x = ((int.parse(element.A)-azimuth)*screen.width/66.19);
-      start_P1_y = ((pitch-int.parse(element.E))*screen.height/52.09);
+     double h_f = model.sensorw/screen.height;
+     double w_f = model.sensorh/screen.width;
+    start_P1_x = 2*tan((int.parse(element.A)-azimuth)*pi/360)*model.focal_length/w_f;
+    start_P1_y=  2*tan((pitch-int.parse(element.E))*pi/360)*model.focal_length/h_f;
+      // start_P1_x = ((int.parse(element.A)-azimuth)*screen.width/model.Vertical_View_angle);
+      // start_P1_y = ((pitch-int.parse(element.E))*screen.height/model.Horizontal_View_angle);
       x =  ((start_P1_x*cos(roll)-start_P1_y*sin(-roll))+screen.width/2);
       y =  ((start_P1_x*sin(-roll)+start_P1_y*cos(roll))+screen.height/2);
           if(roll==0&&n<12){

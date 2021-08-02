@@ -1,6 +1,10 @@
 class CameraModel  {
-  int focal_length;
-  var Horizontal_View_angle;
-  var Vertical_View_angle;
-  CameraModel({this.focal_length,this.Horizontal_View_angle,this.Vertical_View_angle});
+  var focal_length;
+  var vfv;
+  var sensor_p_x;
+  var sensor_p_y;
+  var sensorw;
+  var sensorh;
+  var hfv;
+  CameraModel({this.focal_length,this.vfv,this.hfv,this.sensorw,this.sensorh,this.sensor_p_x,this.sensor_p_y});
 }

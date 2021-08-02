@@ -1,15 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:aeyrium_sensor/aeyrium_sensor.dart';
 import 'package:camera/camera.dart' as camera_;
-import 'package:camera/new/camera.dart';
+import 'package:cameraviewer/modals/camera_model.dart';
 import 'package:cameraviewer/painter.dart';
+import 'package:cameraviewer/services/get_camera_hardware.dart';
+import 'package:esys_flutter_share/esys_flutter_share.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -35,6 +35,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   var pitch;
   var roll;
     List _list1 = [
+
       {"A": "110", "E": "30"},
       {"A": "140", "E": "30"},
       {"A": "170", "E": "30"},
@@ -50,6 +51,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   ];
   List<Points> _list = List<Points>();
   Points capture_point;
+  CameraModel camera_model;
   int list_index;
   int number = 0;
   List<Image_set> _imglist = [];
@@ -65,10 +67,16 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     capture_point =_list[0];
       print("# STATUS 200 VISIBLE LIST");
     super.initState();
+     get_camera_hardware().then((value) {
+      setState(() {
+        camera_model=value;
+      });
+    });
     _streamSubscriptions = AeyriumSensor.sensorEvents.listen((event) {
       setState(() {
         pitch = ((event.pitch) * 180 / math.pi).toInt();
         roll = (event.roll).toInt();
+
       });
     });
     _streamSubscriptions2 = FlutterCompass.events.listen((event) {
@@ -78,9 +86,11 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     });
     _controller = camera_.CameraController(
         widget.camera, camera_.ResolutionPreset.medium);
-    _initialiseControllerFuture = _controller.initialize();
+    _initialiseControllerFuture =  _controller.initialize();
+    print("Aspect ration and size");
     Timer.periodic(Duration(seconds: 1), (timer) async{
       var current_A=int.parse(capture_point.A);
+
       var current_E=int.parse(capture_point.E);
       if(current_A-azimuth<=1&&current_A-azimuth>=-1&&current_E-pitch>=-1&&current_E-pitch<=1&&roll==0){
        await TakePhoto(current_A,current_E,context);
@@ -121,10 +131,15 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
 
               )
             ),
-          ):Container(),
+          ):Container(child: Column(
+            children: [
+              Text("Azimuth: ${azimuth}"),
+              Text("Elevation: ${pitch}")
+            ],
+          ),),
 
         ),
-        CustomPaint(
+        camera_model!=null?CustomPaint(
           foregroundPainter: MyPainter(
               pitch: pitch,
               screen: MediaQuery.of(context).size,
@@ -133,6 +148,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
               n: number,
               ImgList: _imglist,
               list: _list,
+              model:camera_model,
               img: imgframelist,
               capture_point: capture_point),
           child: FutureBuilder<void>(
@@ -140,7 +156,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.done) {
                 return number==0? Container(
-                      margin: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.height*(1-1/2.2)/2,horizontal:MediaQuery.of(context).size.width*(1-1/1.8)/2),
+                     margin: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.height*(1-1/2.2)/2,horizontal:MediaQuery.of(context).size.width*(1-1/1.8)/2),
                    child: camera_.CameraPreview(_controller),
                 ):Container();
               } else {
@@ -148,7 +164,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
               }
             },
           ),
-        ),
+        ):Container(),
         Center(
           child: Container(
             alignment: Alignment.bottomCenter,
@@ -158,7 +174,8 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                child:   GestureDetector(
                  onTap: (){
                    if(number==12){
-                     Navigator.push(context, MaterialPageRoute(builder: (BuildContext context)=>ResultPage(_imglist)));
+                     Navigator.pop(context,_imglist);
+                    _shareMixed(_imglist);
                    }
                  },
                  child: Container(
@@ -189,30 +206,65 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   void TakePhoto(int current_A,int current_E,context) async {
     await _initialiseControllerFuture;
    final path =
-        join((await getTemporaryDirectory()).path, '${DateTime.now()}.png');
+        join((await getExternalStorageDirectory()).path,DateTime.now().toString()+'_img.jpg');
+   if(await File(path).exists()){
+    await File(path).delete();
+   }
     await _controller.takePicture(path);
+
+   // final result = await ImageGallerySaver.saveImage(File(path).readAsBytesSync(),quality: 100,name: path.split("/").last);
      print("#1 STATUS 200 IMAGE CAPTURED");
     setState(() {
           Image_set _set =Image_set(azimuth:current_A,elevation:current_E,Imagepath: path);
          _imglist.add(_set);
       });
     var img= await loadUiImage(number);
+    print("height and width of images");
+    print(img.height);
+    print(img.width);
     setState(() {
       imgframelist.add(img);
       number++;
       if(number!=12) {
         capture_point = _list[number];
+      }else{
+        capture_point=_list[4];
       }
     });
 
   }
   Future<ui.Image> loadUiImage(int k) async {
      final data2= await File(_imglist[k].Imagepath).readAsBytes();
+
     final Completer<ui.Image> completer = Completer();
     ui.decodeImageFromList(data2, (ui.Image img) {
       return completer.complete(img);
     });
     return completer.future;
+  }
+  Future<void> _shareMixed(List<Image_set> images) async {
+    try {
+      await Share.files(
+          'Sunscape images',
+          {
+            'img_1.png': File(images[0].Imagepath).readAsBytesSync(),
+            'img_2.png': File(images[1].Imagepath).readAsBytesSync(),
+            'img_3.png': File(images[2].Imagepath).readAsBytesSync(),
+            'img_4.png': File(images[3].Imagepath).readAsBytesSync(),
+            'img_5.png': File(images[4].Imagepath).readAsBytesSync(),
+            'img_6.png': File(images[5].Imagepath).readAsBytesSync(),
+            'img_7.png': File(images[6].Imagepath).readAsBytesSync(),
+            'img_8.png': File(images[7].Imagepath).readAsBytesSync(),
+            'img_9.png': File(images[8].Imagepath).readAsBytesSync(),
+            'img_10.png': File(images[9].Imagepath).readAsBytesSync(),
+            'img_11.png': File(images[10].Imagepath).readAsBytesSync(),
+            'img_12.png': File(images[11].Imagepath).readAsBytesSync(),
+          },
+          '*/*',
+          text: 'Add these file to google drive folder');
+    } catch (e) {
+      print('error: $e');
+    }
   }
 }
 

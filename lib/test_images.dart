@@ -1,7 +1,28 @@
+import 'dart:io';
+
+import 'package:cameraviewer/ResultPage.dart';
+import 'package:cameraviewer/services/imageProcessing/image_processing.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:multi_image_picker/multi_image_picker.dart';
+import 'package:http/http.dart' show get;
 import 'package:flutter_datetime_picker/flutter_datetime_picker.dart';
+import 'package:multi_image_picker/multi_image_picker.dart';
+class ParentBuilder extends StatefulWidget {
+  const ParentBuilder({Key key}) : super(key: key);
+
+  @override
+  _ParentBuilderState createState() => _ParentBuilderState();
+}
+
+class _ParentBuilderState extends State<ParentBuilder> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: TestImages(),
+    );
+  }
+}
+
 
 class TestImages extends StatefulWidget {
   const TestImages({Key key}) : super(key: key);
@@ -13,11 +34,16 @@ class TestImages extends StatefulWidget {
 class _TestImagesState extends State<TestImages> {
   @override
   List<Asset> images = <Asset>[];
-  void initState(){
+  DateTime picked_time;
+  String status=null;
+  TextEditingController _controller = TextEditingController();
+
+  void initState() {
     super.initState();
   }
-  Future <void> pickImages() async{
-    List<Asset> resultList=<Asset>[];
+
+  Future<void> pickImages() async {
+    List<Asset> resultList = <Asset>[];
     try {
       resultList = await MultiImagePicker.pickImages(
         maxImages: 12,
@@ -33,52 +59,55 @@ class _TestImagesState extends State<TestImages> {
     setState(() {
       images = resultList;
     });
-
+    images.forEach((element) {
+      print("${element.name} ${element.identifier}");
+    });
   }
-  Widget build(BuildContext context) {
-    return Container(
-      child:Center(
-          child:Column(
-              children: <Widget>[
-                RaisedButton(
-                    child: Text('Pick Your 12 binary Image'),
-                    onPressed: pickImages) ,
-                RaisedButton(
-                    onPressed: () async{
-                      await DatePicker.showDatePicker(context,
-                          showTitleActions: true,
-                          minTime: DateTime(2021,1,1),
-                          maxTime: DateTime(2030,12,30), onChanged: (date) {
-                            print('change $date');
-                          }, onConfirm: (date) {
-                            print('confirm $date');
-                          }, currentTime: DateTime.now(), locale: LocaleType.en);
-                      await showTimePicker(context: context,
-                        initialTime: TimeOfDay.fromDateTime(DateTime.now()),
-                      );
-                    },
-                    child: Text(
-                      'Date and Time Picker',
-                      style: TextStyle(color: Colors.blue),
-                    )),
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(25.0),
-                    color: Theme.of(context).accentColor
 
-                  ),
-                  child: InkWell(
-                    child:Center(
-                        child:Text(
-                      'Procced'
-                    )
-                  ),
-                    onTap: (){},
-                )
-                )
-                ,
-              ]
-          )
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          child: Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+            RaisedButton(
+                child: Text('pick binary images'),
+                onPressed: pickImages),
+            // RaisedButton(
+            //     onPressed: () async {
+            //       DatePicker.showDateTimePicker(context,
+            //           showTitleActions: true,
+            //           minTime: DateTime(2019, 5, 5, 20, 50),
+            //           maxTime: DateTime(2022, 6, 7, 05, 09), onChanged: (date) {
+            //         print('change $date in time zone ' +
+            //             date.timeZoneOffset.inHours.toString());
+            //       }, onConfirm: (date) {
+            //         setState(() {
+            //           picked_time = date;
+            //         });
+            //         print('confirm $date');
+            //       }, locale: LocaleType.en);
+            //     },
+            //     child: Text(
+            //       'Pick Date And Time',
+            //     )),
+            RaisedButton(
+                child: Text('Process Images'),
+                onPressed: images.length!=12?null:() async{
+               var data=  await   ImageProcessing().calculate(images,
+                      (String res) async{
+                    setState(() {
+                      status=res;
+                    });
+                  });
+               print("done 100 %");
+              await Navigator.push(context, MaterialPageRoute(builder: (_)=>ResultPage(data)));
+                }),
+                SizedBox(height: 20,),
+                Text(status!=null?status:"")
+          ])),
+        ),
       ),
     );
   }

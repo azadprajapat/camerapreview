@@ -14,8 +14,6 @@ class SunPosition {
   double zenith,azimuth;
   SunPos calculate (SunPosEstimateData data){
     double ut=data.time.hour-5.5;
-    print(data.time.hour);
-
     int year=data.time.year;
     int month=data.time.month;
     int day=data.time.day;
@@ -80,20 +78,16 @@ class SunPosition {
     elevationnorefration = asin(slat*sdeltacorr+clat*cdeltacorr*chcorr);
 
     final double elevmin = -.01;
-
-
     //refraction correction is neglected for now
     // if(elevationnorefration>elevmin)
     //   refractioncorrection = .084217*pressure/(273+temperature)/tan(elevationnorefration+.0031376/(elevationnorefration+.089186));
     // else
-
 
     refractioncorrection=0;
     zenith = pi/2 - elevationnorefration - refractioncorrection;
     azimuth = atan2(shcorr,chcorr*slat-sdeltacorr/cdeltacorr*clat);
     azimuth=azimuth*180/pi;
     zenith=zenith*180/pi;
-
     azimuth=180+azimuth;
     zenith=90-zenith;
     return SunPos(azimuth: azimuth,elevation: zenith);
