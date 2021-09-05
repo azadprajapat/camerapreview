@@ -5,19 +5,19 @@ import 'package:cameraviewer/modals/camera_model.dart';
 import 'package:cameraviewer/services/get_camera_hardware.dart';
 import 'package:cameraviewer/test_images.dart';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart';
 import 'camerapreview.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final cameras = await availableCameras();
   final firstCamera=cameras.first;
-
+  CameraModel cameraModel = await get_camera_hardware();
+  print("Received camera data");
   runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
     home: HomePage(),
     routes: {
-      '/capture-img': (C) => Home(camera: firstCamera,)
+      '/capture-img': (C) => Camera_Preview(camera: firstCamera,model: cameraModel )
     },
   ));
 }
@@ -48,11 +48,6 @@ class _HomePageState extends State<HomePage> {
                 child: Text('Test Images'),
                 onPressed: ()async{
                   print("Camera Datas");
-                  CameraModel cameraModel = await get_camera_hardware();
-                  print(cameraModel.focal_length);
-                  print("sensor PIXELS ${cameraModel.sensor_p_x}X${cameraModel.sensor_p_y}");
-                  print("sensor MM ${cameraModel.sensorw}X${cameraModel.sensorh}");
-                  print("sensor FOV ${cameraModel.vfv}X${cameraModel.hfv}");
                   Navigator.push(context, MaterialPageRoute(builder: (_)=>ParentBuilder()));
                 }),
 

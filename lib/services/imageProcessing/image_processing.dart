@@ -149,7 +149,6 @@ class ImageProcessing{
     await callback("decoding and getting angles of images");//
     for(int k=0;k<12;k++){
        final image = await IMG.decodeImage(File(images[k].Imagepath).readAsBytesSync());
-
        double h_f = cameraModel.sensorw/image.height;
        double w_f = cameraModel.sensorh/image.width;
        print((images[k].azimuth +

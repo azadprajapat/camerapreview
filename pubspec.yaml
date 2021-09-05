@@ -26,6 +26,7 @@ dependencies:
   camera: ^0.5.7+4
   flutter_compass: ^0.4.2+1
   aeyrium_sensor: ^1.0.7
+  just_audio:
   path_provider:
   path:
   image: ^3.0.2
@@ -58,6 +59,7 @@ flutter:
   assets:
     - assets/bg.jpg
     - assets/rotate.jpg
+    - assets/beep.wav
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

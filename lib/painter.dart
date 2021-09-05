@@ -102,16 +102,13 @@ class MyPainter extends CustomPainter{
       var y;
      double h_f = model.sensorw/screen.height;
      double w_f = model.sensorh/screen.width;
-    start_P1_x = 2*tan((int.parse(element.A)-azimuth)*pi/360)*model.focal_length/w_f;
-    start_P1_y=  2*tan((pitch-int.parse(element.E))*pi/360)*model.focal_length/h_f;
-      // start_P1_x = ((int.parse(element.A)-azimuth)*screen.width/model.Vertical_View_angle);
-      // start_P1_y = ((pitch-int.parse(element.E))*screen.height/model.Horizontal_View_angle);
+    start_P1_x = 2*tan(( element.A -azimuth)*pi/360)*model.focal_length/w_f;
+    start_P1_y=  2*tan((pitch- element.E )*pi/360)*model.focal_length/h_f;
       x =  ((start_P1_x*cos(roll)-start_P1_y*sin(-roll))+screen.width/2);
       y =  ((start_P1_x*sin(-roll)+start_P1_y*cos(roll))+screen.height/2);
           if(roll==0&&n<12){
             canvas.drawCircle(Offset(x, y), 25, circle);
           }
-      if(n==0){
         if(y_center-y >10){
           canvas.drawPath(path1, Center_circle);
         }
@@ -126,8 +123,8 @@ class MyPainter extends CustomPainter{
         }else{
           canvas.drawPath(path4, Center_circle);
         }
-      }
-     canvas.drawRect(Rect.fromPoints(Offset((screen.width-c_width)/2,(screen.height-c_heigth)/2), Offset((screen.width+c_width)/2,(screen.height+c_heigth)/2)), Center_circle);
+
+     canvas.drawRect(Rect.fromPoints(Offset(0,0), Offset(screen.width,screen.height)), Center_circle);
     canvas.drawCircle(Offset(x_center,y_center), 30, Center_circle);
   }
 

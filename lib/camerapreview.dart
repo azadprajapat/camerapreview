@@ -6,52 +6,38 @@ import 'package:aeyrium_sensor/aeyrium_sensor.dart';
 import 'package:camera/camera.dart' as camera_;
 import 'package:cameraviewer/modals/camera_model.dart';
 import 'package:cameraviewer/painter.dart';
-import 'package:cameraviewer/services/get_camera_hardware.dart';
+import 'package:cameraviewer/services/image_optimization.dart';
 import 'package:esys_flutter_share/esys_flutter_share.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:math' as math;
-import 'package:flutter/widgets.dart' as w;
 
-import 'ResultPage.dart';
+class Camera_Preview extends StatefulWidget {
 
-class Home extends StatefulWidget {
   final camera_.CameraDescription camera;
-
-  const Home({Key key, this.camera}) : super(key: key);
+  final CameraModel model;
+    Camera_Preview({Key key, this.camera,this.model }) : super(key: key);
 
   @override
-  _HomeState createState() => _HomeState();
+  _Camera_PreviewState createState() => _Camera_PreviewState();
 }
 
-class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
+class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProviderStateMixin {
+
+  AudioPlayer _audioPlayer=AudioPlayer();
 
   List<ui.Image> imgframelist=[];
   camera_.CameraController _controller;
   Future<void> _initialiseControllerFuture;
   var pitch;
   var roll;
-    List _list1 = [
-
-      {"A": "110", "E": "30"},
-      {"A": "140", "E": "30"},
-      {"A": "170", "E": "30"},
-      {"A": "200", "E": "30"},
-      {"A": "230", "E": "30"},
-      {"A": "260", "E": "30"},
-      {"A": "260", "E": "60"},
-      {"A": "230", "E": "60"},
-      {"A": "200", "E": "60"},
-      {"A": "170", "E": "60"},
-      {"A": "140", "E": "60"},
-      {"A": "110", "E": "60"},
-  ];
+  int total_count=0;
   List<Points> _list = List<Points>();
   Points capture_point;
-  CameraModel camera_model;
   int list_index;
   int number = 0;
   List<Image_set> _imglist = [];
@@ -61,18 +47,16 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
 
   @override
   void initState() {
-    _list1.forEach((element) {
-      _list.add(Points(A: element['A'], E: element['E']));
+
+    set_player();
+    setState(() {
+      _list= OptimiseImage().get_image_cordinates(widget.model);
+      total_count=_list.length;
     });
+    print("total count ${total_count}");
     capture_point =_list[0];
-      print("# STATUS 200 VISIBLE LIST");
-    super.initState();
-     get_camera_hardware().then((value) {
-      setState(() {
-        camera_model=value;
-      });
-    });
-    _streamSubscriptions = AeyriumSensor.sensorEvents.listen((event) {
+     super.initState();
+     _streamSubscriptions = AeyriumSensor.sensorEvents.listen((event) {
       setState(() {
         pitch = ((event.pitch) * 180 / math.pi).toInt();
         roll = (event.roll).toInt();
@@ -87,11 +71,18 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     _controller = camera_.CameraController(
         widget.camera, camera_.ResolutionPreset.medium);
     _initialiseControllerFuture =  _controller.initialize();
-    print("Aspect ration and size");
-    Timer.periodic(Duration(seconds: 1), (timer) async{
-      var current_A=int.parse(capture_point.A);
 
-      var current_E=int.parse(capture_point.E);
+    Timer.periodic(Duration(seconds: 1), (timer) async{
+      double distance= pow((capture_point.A-azimuth),2)+pow((capture_point.A-azimuth),2);
+       if(distance<40&&distance>5) {
+        _audioPlayer.setSpeed(2);
+        _audioPlayer.setVolume(1);
+      }else{
+         _audioPlayer.setSpeed(1);
+         _audioPlayer.setVolume(0.5);
+       }
+      var current_A= capture_point.A ;
+      var current_E= capture_point.E;
       if(current_A-azimuth<=1&&current_A-azimuth>=-1&&current_E-pitch>=-1&&current_E-pitch<=1&&roll==0){
        await TakePhoto(current_A,current_E,context);
         print("# STATUS 200 PHOTO CAPTURED");
@@ -99,7 +90,10 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
 
     });
     }
-
+   void set_player()async{
+    await _audioPlayer.setAsset('assets/beep.wav');
+    await _audioPlayer.play();
+   }
   @override
   void dispose() {
     if (_streamSubscriptions != null) {
@@ -139,7 +133,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
           ),),
 
         ),
-        camera_model!=null?CustomPaint(
+        widget.model!=null?CustomPaint(
           foregroundPainter: MyPainter(
               pitch: pitch,
               screen: MediaQuery.of(context).size,
@@ -148,7 +142,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
               n: number,
               ImgList: _imglist,
               list: _list,
-              model:camera_model,
+              model:widget.model,
               img: imgframelist,
               capture_point: capture_point),
           child: FutureBuilder<void>(
@@ -156,7 +150,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.done) {
                 return number==0? Container(
-                     margin: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.height*(1-1/2.2)/2,horizontal:MediaQuery.of(context).size.width*(1-1/1.8)/2),
+                  //   margin: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.height*(1-1/2.2)/2,horizontal:MediaQuery.of(context).size.width*(1-1/1.8)/2),
                    child: camera_.CameraPreview(_controller),
                 ):Container();
               } else {
@@ -170,10 +164,10 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
             alignment: Alignment.bottomCenter,
             padding: EdgeInsets.only(bottom: 30),
              child: number!=0?CustomPaint(
-               foregroundPainter: ProgressPainer(number/12),
+               foregroundPainter: ProgressPainer(number/total_count),
                child:   GestureDetector(
                  onTap: (){
-                   if(number==12){
+                   if(number==total_count){
                      Navigator.pop(context,_imglist);
                     _shareMixed(_imglist);
                    }
@@ -181,8 +175,8 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                  child: Container(
                    height: 60,
                    width: 60,
-                   child: Center(child: number==12?Icon(Icons.check,color: Colors.green,size: 30,):
-                   Text("${((number*100)/12).toInt()}%",style: TextStyle(fontSize: 18),)
+                   child: Center(child: number==total_count?Icon(Icons.check,color: Colors.green,size: 30,):
+                   Text("${((number*100)/total_count).toInt()}%",style: TextStyle(fontSize: 18),)
                    ),
                    decoration: BoxDecoration(
                        borderRadius: BorderRadius.circular(35),
@@ -203,7 +197,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     );
   }
 
-  void TakePhoto(int current_A,int current_E,context) async {
+  void TakePhoto(double current_A,double current_E,context) async {
     await _initialiseControllerFuture;
    final path =
         join((await getExternalStorageDirectory()).path,DateTime.now().toString()+'_img.jpg');
@@ -225,7 +219,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     setState(() {
       imgframelist.add(img);
       number++;
-      if(number!=12) {
+      if(number!=total_count) {
         capture_point = _list[number];
       }else{
         capture_point=_list[4];
@@ -289,14 +283,14 @@ class ProgressPainer extends CustomPainter {
 }
 
 class Image_set {
-  final Imagepath;
-  final azimuth;
-  final elevation;
+  final String Imagepath;
+  final double azimuth;
+  final double elevation;
   Image_set({this.elevation, this.azimuth, this.Imagepath});
 }
 
 class Points {
-  final A;
-  final E;
+  final double A;
+  final double E;
   Points({this.A, this.E});
 }
