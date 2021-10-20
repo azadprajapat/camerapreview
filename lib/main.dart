@@ -11,16 +11,19 @@ import 'camerapreview.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final cameras = await availableCameras();
-  final firstCamera=cameras.first;
+  final firstCamera = cameras.first;
 
   runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
     home: HomePage(),
     routes: {
-      '/capture-img': (C) => Home(camera: firstCamera,)
+      '/capture-img': (C) => Home(
+            camera: firstCamera,
+          )
     },
   ));
 }
+
 class HomePage extends StatefulWidget {
   const HomePage({Key key}) : super(key: key);
 
@@ -41,10 +44,10 @@ class _HomePageState extends State<HomePage> {
           children: <Widget>[
             RaisedButton(
                 child: Text('Capture Images'),
-                onPressed: ()async{
+                onPressed: () async {
                   await Navigator.pushNamed(context, "/capture-img");
                 }),
-            RaisedButton(
+            /*RaisedButton(
                 child: Text('Test Images'),
                 onPressed: ()async{
                   print("Camera Datas");
@@ -54,9 +57,11 @@ class _HomePageState extends State<HomePage> {
                   print("sensor MM ${cameraModel.sensorw}X${cameraModel.sensorh}");
                   print("sensor FOV ${cameraModel.vfv}X${cameraModel.hfv}");
                   Navigator.push(context, MaterialPageRoute(builder: (_)=>ParentBuilder()));
-                }),
+                }),*/
 
-            SizedBox(height: 15,),
+            SizedBox(
+              height: 15,
+            ),
             //
           ],
         ),
@@ -64,5 +69,3 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
-

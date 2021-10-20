@@ -38,6 +38,7 @@ dependencies:
   permission_handler:
   flutter_datetime_picker: ^1.5.1
   geolocator:
+  web_socket_channel: ^2.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
