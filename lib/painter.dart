@@ -1,7 +1,9 @@
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'package:cameraviewer/camerapreview.dart';
+import 'package:cameraviewer/modals/models.dart';
 import 'package:cameraviewer/modals/camera_model.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
@@ -10,19 +12,36 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
+class ProgressPainer extends CustomPainter {
+  final prgress;
+  ProgressPainer(this.prgress);
+  @override
+  void paint(ui.Canvas canvas, ui.Size size) {
+    Paint pt= new Paint()
+      ..color=Colors.green
+      ..style=PaintingStyle.stroke
+      ..strokeWidth=10;
+    canvas.drawArc(Rect.fromCircle(center:Offset(size.width/2,size.height/2),radius: 35), -pi/2, pi*prgress*2, false, pt);
+    // canvas.drawCircle(Offset(size.width/2,size.height/2), 32, pt);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) {
+    return true;
+  }
+}
+
 class MyPainter extends CustomPainter{
-  final pitch;
   final screen;
-  final roll;
   final ImgList;
-  final azimuth;
   final CameraModel model;
   final n;
+  final MobileSensor sensor;
   final list;
   final capture_point;
   final List<ui.Image> img;
 
-  MyPainter({this.model,this.pitch,this.screen,this.azimuth,this.roll,this.ImgList,this.n,this.list,this.capture_point,this.img});
+  MyPainter({this.model,this.sensor,this.screen,this.ImgList,this.n,this.list,this.capture_point,this.img});
   @override
 
 
@@ -78,17 +97,17 @@ class MyPainter extends CustomPainter{
          // var cx1 = atan((A-azimuth)*pi/180)*model.focal_length/w_f;
          // var cy1=  atan((E-pitch)*pi/180)*model.focal_length/h_f;
 
-          var cx1 = 2*tan((A-azimuth)*pi/360)*model.focal_length/w_f+screen.width/2;
-          var cy1 =  2*tan((pitch-E)*pi/360)*model.focal_length/h_f+screen.height/2;
+          var cx1 = 2*tan((A-sensor.azimuth)*pi/360)*model.focal_length/w_f+screen.width/2;
+          var cy1 =  2*tan((sensor.pitch-E)*pi/360)*model.focal_length/h_f+screen.height/2;
 
           var l_t_a = A-model.hfv/2;
           var l_t_e = E+ model.vfv/2;
           var r_b_a = A+model.hfv/2;
           var r_b_e = E- model.vfv/2;
-          var l_t_x = 2*tan((l_t_a-azimuth)*pi/360)*model.focal_length/w_f+screen.width/2;
-          var l_t_y =  2*tan((pitch-l_t_e)*pi/360)*model.focal_length/h_f+screen.height/2;
-          var r_b_x = 2*tan((r_b_a-azimuth)*pi/360)*model.focal_length/w_f+screen.width/2;
-          var r_b_y =  2*tan((pitch-r_b_e)*pi/360)*model.focal_length/h_f+screen.height/2;
+          var l_t_x = 2*tan((l_t_a-sensor.azimuth)*pi/360)*model.focal_length/w_f+screen.width/2;
+          var l_t_y =  2*tan((sensor.pitch-l_t_e)*pi/360)*model.focal_length/h_f+screen.height/2;
+          var r_b_x = 2*tan((r_b_a-sensor.azimuth)*pi/360)*model.focal_length/w_f+screen.width/2;
+          var r_b_y =  2*tan((sensor.pitch-r_b_e)*pi/360)*model.focal_length/h_f+screen.height/2;
          canvas.drawImageNine(img[i], Rect.fromPoints(Offset(cx1,cy1), Offset(cx1,cy1)), Rect.fromPoints(Offset(l_t_x,l_t_y), Offset(r_b_x,r_b_y)), Captured);
        //   canvas.drawImageNine(img[i], Rect.fromPoints(Offset(cx1,cy1), Offset(cx1,cy1)), Rect.fromPoints(Offset(cx1-img[i].width/2,cy1-img[i].height/2), Offset(cx1+img[i].width/2,cy1+img[i].height/2)), Captured);
            //   canvas.drawImageNine(img[i], Rect.fromPoints(Offset(cx1,cy1), Offset(cx1,cy1)), Rect.fromPoints(Offset(l_t_x,l_t_y), Offset(r_b_x,r_b_y)), Captured);
@@ -102,11 +121,11 @@ class MyPainter extends CustomPainter{
       var y;
      double h_f = model.sensorw/screen.height;
      double w_f = model.sensorh/screen.width;
-    start_P1_x = 2*tan(( element.A -azimuth)*pi/360)*model.focal_length/w_f;
-    start_P1_y=  2*tan((pitch- element.E )*pi/360)*model.focal_length/h_f;
-      x =  ((start_P1_x*cos(roll)-start_P1_y*sin(-roll))+screen.width/2);
-      y =  ((start_P1_x*sin(-roll)+start_P1_y*cos(roll))+screen.height/2);
-          if(roll==0&&n<12){
+    start_P1_x = 2*tan(( element.A -sensor.azimuth)*pi/360)*model.focal_length/w_f;
+    start_P1_y=  2*tan((sensor.pitch- element.E )*pi/360)*model.focal_length/h_f;
+      x =  ((start_P1_x*cos(sensor.roll)-start_P1_y*sin(-sensor.roll))+screen.width/2);
+      y =  ((start_P1_x*sin(-sensor.roll)+start_P1_y*cos(sensor.roll))+screen.height/2);
+          if(sensor.roll==0&&n<12){
             canvas.drawCircle(Offset(x, y), 25, circle);
           }
         if(y_center-y >10){
@@ -133,6 +152,15 @@ class MyPainter extends CustomPainter{
     return true;
   }
 
+}
+Future<ui.Image> loadUiImage(String path) async {
+  final data2= await File(path).readAsBytes();
+
+  final Completer<ui.Image> completer = Completer();
+  ui.decodeImageFromList(data2, (ui.Image img) {
+    return completer.complete(img);
+  });
+  return completer.future;
 }
 
 

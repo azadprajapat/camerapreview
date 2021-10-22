@@ -1,5 +1,5 @@
-import 'package:cameraviewer/camerapreview.dart';
 import 'package:cameraviewer/modals/camera_model.dart';
+import 'package:cameraviewer/modals/models.dart';
 
 class OptimiseImage{
   List<Points> get_image_cordinates(CameraModel model){

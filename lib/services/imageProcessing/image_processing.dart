@@ -1,5 +1,6 @@
 import 'package:cameraviewer/ResultPage.dart';
 import 'package:cameraviewer/modals/camera_model.dart';
+import 'package:cameraviewer/modals/models.dart';
 import 'package:cameraviewer/modals/sun_models.dart';
 import 'package:cameraviewer/services/get_location.dart';
 import 'package:cameraviewer/services/imageProcessing/sun_position.dart';
@@ -11,29 +12,24 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
 import 'package:image/image.dart' as IMG;
-
-import '../../camerapreview.dart';
 import '../get_camera_hardware.dart';
 class ImageProcessing{
 
-  Future<Map> calculate(List image_map,List<Points> angles,Function callback)async{
-    print("function called");
-    List<Image_set> images=[];
+  Future<Map> calculate(List<Image_set> image_collection,List<Points> angles,Function callback)async{
     callback("reading camera hardware data");
-    image_map.sort((a,b){
-      int image_a= int.parse(a['name'].substring(3));
-      int image_b=int.parse(b['name'].substring(3));
+    print(image_collection[0].isbinary);
+    print(image_collection[0].binary_path);
+    image_collection.sort((a,b){
+      int image_a= int.parse(a.name.substring(3));
+      int image_b=int.parse(b.name.substring(3));
       return image_a.compareTo(image_b);
     });
-     CameraModel cameraModel = await get_camera_hardware();
+
+    CameraModel cameraModel = await get_camera_hardware();
     await callback("processing images it may take some time");
-    for(int i=0;i<angles.length;i++){
-      print(image_map[i]['name']);
-      images.add(Image_set(elevation: angles[i].E,azimuth: angles[i].A,Imagepath: image_map[i]['image']));
-    }
     print("Now we have each and every image with their azimuth and elevation angle");
-   List<List<int>> result_matrix=await processimage(images, cameraModel,callback);
-   await callback("Image processed calculating full day data...");
+    List<List<int>> result_matrix=await processimage(image_collection, cameraModel,callback);
+    await callback("Image processed calculating full day data...");
     return full_day_result(result_matrix);
   }
    Future<Map> full_day_result(List<List<int>> result_matrix)async{
@@ -82,7 +78,7 @@ class ImageProcessing{
         col, (i) => List<int>.generate(row, (j) => 0));
     await callback("decoding and getting angles of images");//
     for(int k=0;k<images.length;k++){
-       final image = await IMG.decodeImage(File(images[k].Imagepath).readAsBytesSync());
+       final image = await IMG.decodeImage(File(images[k].binary_path).readAsBytesSync());
        double h_f = cameraModel.sensorw/image.height;
        double w_f = cameraModel.sensorh/image.width;
        print((images[k].azimuth +

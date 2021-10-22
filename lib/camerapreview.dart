@@ -3,7 +3,8 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:aeyrium_sensor/aeyrium_sensor.dart';
-import 'package:camera/camera.dart' as camera_;
+import 'package:camera/camera.dart' as CAM;
+import 'package:cameraviewer/modals/models.dart';
 import 'package:cameraviewer/modals/camera_model.dart';
 import 'package:cameraviewer/painter.dart';
 import 'package:cameraviewer/services/imageProcessing/image_processing.dart';
@@ -16,94 +17,53 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:math' as math;
-
 import 'ResultPage.dart';
 
 class Camera_Preview extends StatefulWidget {
-
-  final camera_.CameraDescription camera;
+  final CAM.CameraDescription camera;
   final CameraModel model;
-    Camera_Preview({Key key, this.camera,this.model }) : super(key: key);
-
+  Camera_Preview({Key key, this.camera,this.model }) : super(key: key);
   @override
   _Camera_PreviewState createState() => _Camera_PreviewState();
 }
 
 class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProviderStateMixin {
-  AudioPlayer _audioPlayer=AudioPlayer();
 
+  //camera and image controller
+  int total_count=0;
+  List<Points> capture_points =[];
+  Points curr_capture_point;
   List<ui.Image> imgframelist=[];
 
-  camera_.CameraController _controller;
+  CAM.CameraController _cameraController;
   Future<void> _initialiseControllerFuture;
-  var pitch;
-  ImageSocket socket=ImageSocket();
-  var roll;
-  int total_count=0;
-  List<Points> _list = List<Points>();
-  Points capture_point;
-  List received_image=[];
+
   int list_index;
   int number = 0;
-  List<Image_set> _imglist = [];
-  var azimuth;
+  List<Image_set> image_collection = [];
+
+  //senors
+  MobileSensor sensor_data=MobileSensor();
   StreamSubscription<dynamic> _angles_stream;
   StreamSubscription<dynamic> _compass_stream;
+
+  //image streams
+  ImageSocket socket=ImageSocket();
   Stream image_stream;
+  // audio controller
+  AudioPlayer _audioPlayer=AudioPlayer();
+
+
   @override
   void initState() {
-    socket.initiate();
-    image_stream=socket.streamSocket.stream;
-    image_stream.listen((event) {
-      print(event);
-      print("Getting data from stream");
-      received_image.add({'name':event['name'],'image':event['image']});
-      print(received_image.length);
-    });
-    setState(() {
-      _list= OptimiseImage().get_image_cordinates(widget.model);
-      total_count=_list.length;
-    });
-    print("total count ${total_count}");
-    capture_point =_list[0];
-     super.initState();
-     _angles_stream = AeyriumSensor.sensorEvents.listen((event) {
-      setState(() {
-        pitch = ((event.pitch) * 180 / math.pi).toInt();
-        roll = (event.roll).toInt();
-      });
-    });
-    _compass_stream = FlutterCompass.events.listen((event) {
-      setState(() {
-        azimuth = event.toInt();
-      });
-    });
-    _controller = camera_.CameraController(
-        widget.camera, camera_.ResolutionPreset.medium);
-    _initialiseControllerFuture =  _controller.initialize();
+    super.initState();
+    set_capture_points();
+    set_senors();
+    initiate_image_stream();
+    initate_audio_feature();
+    initiate_camera();
+  }
 
-    Timer.periodic(Duration(seconds: 1), (timer) async{
-      double distance= pow((capture_point.A-azimuth),2)+pow((capture_point.A-azimuth),2);
-       if(distance<40&&distance>5) {
-        _audioPlayer.setSpeed(2);
-        _audioPlayer.setVolume(1);
-      }else{
-         _audioPlayer.setSpeed(1);
-         _audioPlayer.setVolume(0.5);
-       }
-      var current_A= capture_point.A ;
-      var current_E= capture_point.E;
-      if(current_A-azimuth<=1&&current_A-azimuth>=-1&&current_E-pitch>=-1&&current_E-pitch<=1&&roll==0){
-       await TakePhoto(current_A,current_E,context);
-        print("# STATUS 200 PHOTO CAPTURED");
-      }
-
-    });
-    }
-   void set_player()async{
-    await _audioPlayer.setAsset('assets/beep.wav');
-    await _audioPlayer.play();
-   }
   @override
   void dispose() {
     if (_angles_stream != null) {
@@ -112,184 +72,207 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
     if (_compass_stream != null) {
       _compass_stream.cancel();
     }
-    _controller.dispose();
-     super.dispose();
+    _cameraController.dispose();
+    super.dispose();
   }
 
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromRGBO(97, 97, 97, 1),
+        backgroundColor: Color.fromRGBO(97, 97, 97, 1),
         body: Stack(
-      children: <Widget>[
-        Container(
-          alignment: Alignment.topCenter,
-          padding: EdgeInsets.only(top: 70),
-          child: roll!=0?Container(
-            width: 50,
-            height: 70,
-            decoration: BoxDecoration(
-              color: Colors.grey,
-              image: DecorationImage(
-                image: AssetImage("assets/rotate.jpg"),
-                fit: BoxFit.cover
+          children: <Widget>[
+            Container(
+              alignment: Alignment.topCenter,
+              padding: EdgeInsets.only(top: 70),
+              child: sensor_data.roll!=0?Container(
+                width: 50,
+                height: 70,
+                decoration: BoxDecoration(
+                    color: Colors.grey,
+                    image: DecorationImage(
+                        image: AssetImage("assets/rotate.jpg"),
+                        fit: BoxFit.cover
 
-              )
+                    )
+                ),
+              ):Container(child: Column(
+                children: [
+                  Text("Azimuth: ${sensor_data.azimuth}"),
+                  Text("Elevation: ${sensor_data.pitch}")
+                ],
+              ),),
+
             ),
-          ):Container(child: Column(
-            children: [
-              Text("Azimuth: ${azimuth}"),
-              Text("Elevation: ${pitch}")
-            ],
-          ),),
+            widget.model!=null?CustomPaint(
+              foregroundPainter: MyPainter(
+                  sensor:sensor_data,
+                  screen: MediaQuery.of(context).size,
+                  n: number,
+                  ImgList: image_collection,
+                  list: capture_points,
+                  model:widget.model,
+                  img: imgframelist,
+                  capture_point: curr_capture_point),
+              child: FutureBuilder<void>(
+                future: _initialiseControllerFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.done) {
+                    return number==0? Container(
+                      //   margin: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.height*(1-1/2.2)/2,horizontal:MediaQuery.of(context).size.width*(1-1/1.8)/2),
+                      child: CAM.CameraPreview(_cameraController),
+                    ):Container();
+                  } else {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                },
+              ),
+            ):Container(),
+            Center(
+              child: Container(
+                alignment: Alignment.bottomCenter,
+                padding: EdgeInsets.only(bottom: 30),
+                child: number!=0?CustomPaint(
+                    foregroundPainter: ProgressPainer(number/total_count),
+                    child:   GestureDetector(
+                      onTap: ()async{
+                        if(if_all_image_received()){
+                          print("Transfering to analysis model");
+                          var data=  await   ImageProcessing().calculate(image_collection,capture_points,
+                                  (String res) async{
+                                print("status:"+res);
+                              });
+                          print("done 100 %");
+                          await Navigator.push(context, MaterialPageRoute(builder: (_)=>ResultPage(data)));
 
-        ),
-        widget.model!=null?CustomPaint(
-          foregroundPainter: MyPainter(
-              pitch: pitch,
-              screen: MediaQuery.of(context).size,
-              azimuth: azimuth,
-              roll: roll,
-              n: number,
-              ImgList: _imglist,
-              list: _list,
-              model:widget.model,
-              img: imgframelist,
-              capture_point: capture_point),
-          child: FutureBuilder<void>(
-            future: _initialiseControllerFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.done) {
-                return number==0? Container(
-                  //   margin: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.height*(1-1/2.2)/2,horizontal:MediaQuery.of(context).size.width*(1-1/1.8)/2),
-                   child: camera_.CameraPreview(_controller),
-                ):Container();
-              } else {
-                return Center(child: CircularProgressIndicator());
-              }
-            },
-          ),
-        ):Container(),
-        Center(
-          child: Container(
-            alignment: Alignment.bottomCenter,
-            padding: EdgeInsets.only(bottom: 30),
-             child: number!=0?CustomPaint(
-               foregroundPainter: ProgressPainer(number/total_count),
-               child:   GestureDetector(
-                 onTap: ()async{
-                   if(received_image.length==total_count){
-                     print("Great got all images");
-                    print("Transfering to analysis model");
-                    print(received_image.length);
-                    print(_list.length);
-                     var data=  await   ImageProcessing().calculate(received_image,_list,
-                             (String res) async{
-                            print("status:"+res);
-                         });
-                     print("done 100 %");
-                     await Navigator.push(context, MaterialPageRoute(builder: (_)=>ResultPage(data)));
-
-                   }else{
-                     print(received_image.length);
-                   }
-                 },
-                 child: Container(
-                   height: 60,
-                   width: 60,
-                   child: Center(child: number==total_count?Icon(Icons.check,color: Colors.green,size: 30,):
-                   Text("${((number*100)/total_count).toInt()}%",style: TextStyle(fontSize: 18),)
-                   ),
-                   decoration: BoxDecoration(
-                       borderRadius: BorderRadius.circular(35),
-                       color: Colors.white,
-                       boxShadow: [
-                         BoxShadow(color: Colors.black,blurRadius: 5.0)
-                       ]
-                   ),
-                 ),
-               )
-             ):Container(
-               child: Text("Point the camera at the dot",style: TextStyle(color: Colors.white,fontSize: 20,),),
-             ),
-          ),
-        ),
-      ],
-    )
+                        }else{
+                          print('uh oh not all images are with us');
+                        }
+                      },
+                      child: Container(
+                        height: 60,
+                        width: 60,
+                        child: Center(child: number==total_count?Icon(Icons.check,color: Colors.green,size: 30,):
+                        Text("${((number*100)/total_count).toInt()}%",style: TextStyle(fontSize: 18),)
+                        ),
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(35),
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(color: Colors.black,blurRadius: 5.0)
+                            ]
+                        ),
+                      ),
+                    )
+                ):Container(
+                  child: Text("Point the camera at the dot",style: TextStyle(color: Colors.white,fontSize: 20,),),
+                ),
+              ),
+            ),
+          ],
+        )
     );
   }
 
+
+
   void TakePhoto(double current_A,double current_E,context) async {
     await _initialiseControllerFuture;
-   final path =
-        join((await getExternalStorageDirectory()).path,DateTime.now().toString()+'_img.jpg');
-   if(await File(path).exists()){
-    await File(path).delete();
-   }
-    await _controller.takePicture(path);
-   // final result = await ImageGallerySaver.saveImage(File(path).readAsBytesSync(),quality: 100,name: path.split("/").last);
+    final path =
+    join((await getExternalStorageDirectory()).path,DateTime.now().toString()+'_img.jpg');
+    if(await File(path).exists()){
+      await File(path).delete();
+    }
+    await _cameraController.takePicture(path);
+    // final result = await ImageGallerySaver.saveImage(File(path).readAsBytesSync(),quality: 100,name: path.split("/").last);
 
     socket.send_image(File(path), "Img"+number.toString());
-
     setState(() {
-          Image_set _set =Image_set(azimuth:current_A,elevation:current_E,Imagepath: path);
-         _imglist.add(_set);
-      });
-    var img= await loadUiImage(number);
-    print("height and width of images");
-    print(img.height);
-    print(img.width);
+      Image_set _set =Image_set(azimuth:current_A,elevation:current_E,captured_path: path,name: "Img"+number.toString(),isbinary: false);
+      image_collection.add(_set);
+    });
+
+    var img= await loadUiImage(image_collection[number].captured_path);
     setState(() {
       imgframelist.add(img);
       number++;
       if(number!=total_count) {
-        capture_point = _list[number];
+        curr_capture_point = capture_points[number];
       }else{
-        capture_point=_list[4];
+        curr_capture_point=capture_points[4];
       }
     });
 
   }
-  Future<ui.Image> loadUiImage(int k) async {
-     final data2= await File(_imglist[k].Imagepath).readAsBytes();
-
-    final Completer<ui.Image> completer = Completer();
-    ui.decodeImageFromList(data2, (ui.Image img) {
-      return completer.complete(img);
+  bool if_all_image_received(){
+      image_collection.forEach((element) {
+        if(!element.isbinary)
+          return false;
+      });
+      return true;
+  }
+  void set_capture_points(){
+    setState(() {
+      capture_points= OptimiseImage().get_image_cordinates(widget.model);
+      total_count=capture_points.length;
     });
-    return completer.future;
+    curr_capture_point =capture_points[0];
+  }
+  void initiate_image_stream(){
+    socket.initiate();
+    image_stream=socket.streamSocket.stream;
+    image_stream.listen((event) {
+      image_collection.forEach((element) {
+        if(!element.isbinary&&element.name==event['name']){
+          element.binary_path=event['image'];
+          element.isbinary=true;
+        }
+      });
+    });
+  }
+  void set_senors()async{
+    _angles_stream = AeyriumSensor.sensorEvents.listen((event) {
+      setState(() {
+        sensor_data.pitch = ((event.pitch) * 180 / math.pi).toInt();
+        sensor_data.roll = (event.roll).toInt();
+      });
+    });
+    _compass_stream = FlutterCompass.events.listen((event) {
+      setState(() {
+        sensor_data.azimuth= event.toInt();
+      });
+    });
+  }
+  void initiate_camera(){
+    _cameraController = CAM.CameraController(
+        widget.camera, CAM.ResolutionPreset.medium);
+    _initialiseControllerFuture =  _cameraController.initialize();
+  }
+  void initate_audio_feature(){
+    Timer.periodic(Duration(seconds: 1), (timer) async{
+      double distance= pow((curr_capture_point.A-sensor_data.azimuth),2)+pow((curr_capture_point.A-sensor_data.azimuth),2);
+      if(distance<40&&distance>5) {
+        _audioPlayer.setSpeed(2);
+        _audioPlayer.setVolume(1);
+      }else{
+        _audioPlayer.setSpeed(1);
+        _audioPlayer.setVolume(0.5);
+      }
+      var current_A= curr_capture_point.A ;
+      var current_E= curr_capture_point.E;
+      if(current_A-sensor_data.azimuth<=1&&current_A-sensor_data.azimuth>=-1&&current_E-sensor_data.pitch>=-1&&current_E-sensor_data.pitch<=1&&sensor_data.roll==0){
+        await TakePhoto(current_A,current_E,context);
+        print("# STATUS 200 PHOTO CAPTURED");
+      }
+
+    });
+  }
+  void set_player()async{
+    await _audioPlayer.setAsset('assets/beep.wav');
+    await _audioPlayer.play();
   }
 
 }
 
-class ProgressPainer extends CustomPainter {
-  final prgress;
 
-  ProgressPainer(this.prgress);
-  @override
-  void paint(ui.Canvas canvas, ui.Size size) {
-    Paint pt= new Paint()
-    ..color=Colors.green
-    ..style=PaintingStyle.stroke
-    ..strokeWidth=10;
-    canvas.drawArc(Rect.fromCircle(center:Offset(size.width/2,size.height/2),radius: 35), -pi/2, pi*prgress*2, false, pt);
-   // canvas.drawCircle(Offset(size.width/2,size.height/2), 32, pt);
-  }
 
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) {
-    return true;
-    }
-}
 
-class Image_set {
-  final String Imagepath;
-  final double azimuth;
-  final double elevation;
-  Image_set({this.elevation, this.azimuth, this.Imagepath});
-}
-
-class Points {
-  final double A;
-  final double E;
-  Points({this.A, this.E});
-}
