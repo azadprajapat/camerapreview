@@ -36,20 +36,17 @@ class ImageSocket{
       print("socket connected");
     });
     socket.on("send-image", (data)async{
-      print("send image called received data from server");
+      print("Received image from server");
       Uint8List binary = data['binary'];
-      print(binary);
       String name = data['name'];
       final path =
           join((await getExternalStorageDirectory()).path,DateTime.now().toString()+'_img.jpg');
       File(path).writeAsBytes(
           binary.buffer.asUint8List(binary.offsetInBytes, binary.lengthInBytes));
-      print("Received image and saved to");
-      print(path);
       streamSocket.sink.add({"name":name,"image":path});
     });
   }
-   bool isrunning() => socket.connected;
+  bool isrunning() => socket.connected;
   void send_image(File file,name){
     while(!isrunning()&&try_count<10){
       initiate();
@@ -60,6 +57,9 @@ class ImageSocket{
       "binary": file.readAsBytesSync()
     });
     print("image sended");
+   }
+   void disconnect(){
+    socket.disconnect();
    }
 
 }

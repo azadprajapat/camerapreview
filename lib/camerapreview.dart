@@ -142,6 +142,7 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
                                 print("status:"+res);
                               });
                           print("done 100 %");
+                          socket.disconnect();
                           await Navigator.push(context, MaterialPageRoute(builder: (_)=>ResultPage(data)));
 
                         }else{

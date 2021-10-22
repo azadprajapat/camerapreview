@@ -2,10 +2,15 @@ import 'package:camera/camera.dart';
 import 'package:cameraviewer/modals/camera_model.dart';
 import 'package:cameraviewer/services/get_camera_hardware.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'camerapreview.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
+
   final cameras = await availableCameras();
   final firstCamera=cameras.first;
   CameraModel cameraModel = await get_camera_hardware();

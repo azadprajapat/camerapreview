@@ -1,13 +1,9 @@
-
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
-import 'package:cameraviewer/camerapreview.dart';
 import 'package:cameraviewer/modals/models.dart';
 import 'package:cameraviewer/modals/camera_model.dart';
-import 'package:flutter/services.dart';
 import 'dart:ui' as ui;
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
