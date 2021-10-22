@@ -26,7 +26,6 @@ class _ResultPageState extends State<ResultPage> {
   }
   void write_data()async{
     final pdf = pw.Document();
-
     pdf.addPage(
       pw.Page(
         build: (pw.Context context) => pw.Center(

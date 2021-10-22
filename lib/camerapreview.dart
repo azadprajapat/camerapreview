@@ -6,8 +6,9 @@ import 'package:aeyrium_sensor/aeyrium_sensor.dart';
 import 'package:camera/camera.dart' as camera_;
 import 'package:cameraviewer/modals/camera_model.dart';
 import 'package:cameraviewer/painter.dart';
+import 'package:cameraviewer/services/imageProcessing/image_processing.dart';
 import 'package:cameraviewer/services/image_optimization.dart';
-import 'package:esys_flutter_share/esys_flutter_share.dart';
+import 'package:cameraviewer/services/socket-services/ImageSocket.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -15,6 +16,8 @@ import 'package:just_audio/just_audio.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:math' as math;
+
+import 'ResultPage.dart';
 
 class Camera_Preview extends StatefulWidget {
 
@@ -27,28 +30,36 @@ class Camera_Preview extends StatefulWidget {
 }
 
 class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProviderStateMixin {
-
   AudioPlayer _audioPlayer=AudioPlayer();
 
   List<ui.Image> imgframelist=[];
+
   camera_.CameraController _controller;
   Future<void> _initialiseControllerFuture;
   var pitch;
+  ImageSocket socket=ImageSocket();
   var roll;
   int total_count=0;
   List<Points> _list = List<Points>();
   Points capture_point;
+  List received_image=[];
   int list_index;
   int number = 0;
   List<Image_set> _imglist = [];
   var azimuth;
-  StreamSubscription<dynamic> _streamSubscriptions;
-  StreamSubscription<dynamic> _streamSubscriptions2;
-
+  StreamSubscription<dynamic> _angles_stream;
+  StreamSubscription<dynamic> _compass_stream;
+  Stream image_stream;
   @override
   void initState() {
-
-    set_player();
+    socket.initiate();
+    image_stream=socket.streamSocket.stream;
+    image_stream.listen((event) {
+      print(event);
+      print("Getting data from stream");
+      received_image.add({'name':event['name'],'image':event['image']});
+      print(received_image.length);
+    });
     setState(() {
       _list= OptimiseImage().get_image_cordinates(widget.model);
       total_count=_list.length;
@@ -56,14 +67,13 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
     print("total count ${total_count}");
     capture_point =_list[0];
      super.initState();
-     _streamSubscriptions = AeyriumSensor.sensorEvents.listen((event) {
+     _angles_stream = AeyriumSensor.sensorEvents.listen((event) {
       setState(() {
         pitch = ((event.pitch) * 180 / math.pi).toInt();
         roll = (event.roll).toInt();
-
       });
     });
-    _streamSubscriptions2 = FlutterCompass.events.listen((event) {
+    _compass_stream = FlutterCompass.events.listen((event) {
       setState(() {
         azimuth = event.toInt();
       });
@@ -96,11 +106,11 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
    }
   @override
   void dispose() {
-    if (_streamSubscriptions != null) {
-      _streamSubscriptions.cancel();
+    if (_angles_stream != null) {
+      _angles_stream.cancel();
     }
-    if (_streamSubscriptions2 != null) {
-      _streamSubscriptions2.cancel();
+    if (_compass_stream != null) {
+      _compass_stream.cancel();
     }
     _controller.dispose();
      super.dispose();
@@ -166,10 +176,21 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
              child: number!=0?CustomPaint(
                foregroundPainter: ProgressPainer(number/total_count),
                child:   GestureDetector(
-                 onTap: (){
-                   if(number==total_count){
-                     Navigator.pop(context,_imglist);
-                    _shareMixed(_imglist);
+                 onTap: ()async{
+                   if(received_image.length==total_count){
+                     print("Great got all images");
+                    print("Transfering to analysis model");
+                    print(received_image.length);
+                    print(_list.length);
+                     var data=  await   ImageProcessing().calculate(received_image,_list,
+                             (String res) async{
+                            print("status:"+res);
+                         });
+                     print("done 100 %");
+                     await Navigator.push(context, MaterialPageRoute(builder: (_)=>ResultPage(data)));
+
+                   }else{
+                     print(received_image.length);
                    }
                  },
                  child: Container(
@@ -205,9 +226,10 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
     await File(path).delete();
    }
     await _controller.takePicture(path);
-
    // final result = await ImageGallerySaver.saveImage(File(path).readAsBytesSync(),quality: 100,name: path.split("/").last);
-     print("#1 STATUS 200 IMAGE CAPTURED");
+
+    socket.send_image(File(path), "Img"+number.toString());
+
     setState(() {
           Image_set _set =Image_set(azimuth:current_A,elevation:current_E,Imagepath: path);
          _imglist.add(_set);
@@ -236,30 +258,7 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
     });
     return completer.future;
   }
-  Future<void> _shareMixed(List<Image_set> images) async {
-    try {
-      await Share.files(
-          'Sunscape images',
-          {
-            'img_1.png': File(images[0].Imagepath).readAsBytesSync(),
-            'img_2.png': File(images[1].Imagepath).readAsBytesSync(),
-            'img_3.png': File(images[2].Imagepath).readAsBytesSync(),
-            'img_4.png': File(images[3].Imagepath).readAsBytesSync(),
-            'img_5.png': File(images[4].Imagepath).readAsBytesSync(),
-            'img_6.png': File(images[5].Imagepath).readAsBytesSync(),
-            'img_7.png': File(images[6].Imagepath).readAsBytesSync(),
-            'img_8.png': File(images[7].Imagepath).readAsBytesSync(),
-            'img_9.png': File(images[8].Imagepath).readAsBytesSync(),
-            'img_10.png': File(images[9].Imagepath).readAsBytesSync(),
-            'img_11.png': File(images[10].Imagepath).readAsBytesSync(),
-            'img_12.png': File(images[11].Imagepath).readAsBytesSync(),
-          },
-          '*/*',
-          text: 'Add these file to google drive folder');
-    } catch (e) {
-      print('error: $e');
-    }
-  }
+
 }
 
 class ProgressPainer extends CustomPainter {

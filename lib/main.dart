@@ -1,9 +1,6 @@
-import 'dart:math';
-
 import 'package:camera/camera.dart';
 import 'package:cameraviewer/modals/camera_model.dart';
 import 'package:cameraviewer/services/get_camera_hardware.dart';
-import 'package:cameraviewer/test_images.dart';
 import 'package:flutter/material.dart';
 import 'camerapreview.dart';
 
@@ -12,7 +9,6 @@ void main() async {
   final cameras = await availableCameras();
   final firstCamera=cameras.first;
   CameraModel cameraModel = await get_camera_hardware();
-  print("Received camera data");
   runApp(MaterialApp(
     debugShowCheckedModeBanner: false,
     home: HomePage(),
@@ -21,6 +17,7 @@ void main() async {
     },
   ));
 }
+
 class HomePage extends StatefulWidget {
   const HomePage({Key key}) : super(key: key);
 
@@ -33,24 +30,17 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Sunscape Test Application"),
+        title: Text("Sunscape Beta Application"),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             RaisedButton(
-                child: Text('Capture Images'),
+                child: Text('Start Analysis'),
                 onPressed: ()async{
                   await Navigator.pushNamed(context, "/capture-img");
                 }),
-            RaisedButton(
-                child: Text('Test Images'),
-                onPressed: ()async{
-                  print("Camera Datas");
-                  Navigator.push(context, MaterialPageRoute(builder: (_)=>ParentBuilder()));
-                }),
-
             SizedBox(height: 15,),
             //
           ],
