@@ -12,7 +12,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
 import 'package:image/image.dart' as IMG;
-import '../get_camera_hardware.dart';
+import '../platform_channels.dart';
 class ImageProcessing{
 
   Future<Map> calculate(List<Image_set> image_collection,List<Points> angles,Function callback)async{

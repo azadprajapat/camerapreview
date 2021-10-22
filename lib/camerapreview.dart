@@ -7,13 +7,13 @@ import 'package:camera/camera.dart' as CAM;
 import 'package:cameraviewer/modals/models.dart';
 import 'package:cameraviewer/modals/camera_model.dart';
 import 'package:cameraviewer/painter.dart';
+import 'package:cameraviewer/services/platform_channels.dart';
 import 'package:cameraviewer/services/imageProcessing/image_processing.dart';
 import 'package:cameraviewer/services/image_optimization.dart';
 import 'package:cameraviewer/services/socket-services/ImageSocket.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:math' as math;
@@ -51,7 +51,9 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
   ImageSocket socket=ImageSocket();
   Stream image_stream;
   // audio controller
-  AudioPlayer _audioPlayer=AudioPlayer();
+  AudioService player=AudioService();
+
+
 
 
   @override
@@ -62,6 +64,7 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
     initiate_image_stream();
     initate_audio_feature();
     initiate_camera();
+    set_player();
   }
 
   @override
@@ -199,7 +202,9 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
       if(number!=total_count) {
         curr_capture_point = capture_points[number];
       }else{
-        curr_capture_point=capture_points[4];
+
+        curr_capture_point = capture_points[(total_count/2).toInt()];
+        player.StopAudio();
       }
     });
 
@@ -248,28 +253,36 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
         widget.camera, CAM.ResolutionPreset.medium);
     _initialiseControllerFuture =  _cameraController.initialize();
   }
-  void initate_audio_feature(){
-    Timer.periodic(Duration(seconds: 1), (timer) async{
-      double distance= pow((curr_capture_point.A-sensor_data.azimuth),2)+pow((curr_capture_point.A-sensor_data.azimuth),2);
-      if(distance<40&&distance>5) {
-        _audioPlayer.setSpeed(2);
-        _audioPlayer.setVolume(1);
-      }else{
-        _audioPlayer.setSpeed(1);
-        _audioPlayer.setVolume(0.5);
-      }
-      var current_A= curr_capture_point.A ;
-      var current_E= curr_capture_point.E;
-      if(current_A-sensor_data.azimuth<=1&&current_A-sensor_data.azimuth>=-1&&current_E-sensor_data.pitch>=-1&&current_E-sensor_data.pitch<=1&&sensor_data.roll==0){
-        await TakePhoto(current_A,current_E,context);
-        print("# STATUS 200 PHOTO CAPTURED");
-      }
 
+  void initate_audio_feature(){
+    if(curr_capture_point==null)
+        return;
+    Timer.periodic(Duration(seconds: 1), (timer) async{
+
+      double distance= pow((curr_capture_point.A-sensor_data.azimuth),2)+pow((curr_capture_point.E-sensor_data.pitch),2);
+      print(distance);
+      if(distance<2000) {
+
+          player.Adjust_volume(0);
+          print("changing volume 40");
+        } else {
+          player.Adjust_volume(48);
+
+          print("changing volume 25");
+        }
+        var current_A = curr_capture_point.A;
+        var current_E = curr_capture_point.E;
+        if (current_A - sensor_data.azimuth <= 1 &&
+            current_A - sensor_data.azimuth >= -1 &&
+            current_E - sensor_data.pitch >= -1 &&
+            current_E - sensor_data.pitch <= 1 && sensor_data.roll == 0) {
+          await TakePhoto(current_A, current_E, context);
+          print("# STATUS 200 PHOTO CAPTURED");
+        }
     });
   }
   void set_player()async{
-    await _audioPlayer.setAsset('assets/beep.wav');
-    await _audioPlayer.play();
+    player.play_audio();
   }
 
 }

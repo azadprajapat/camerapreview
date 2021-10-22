@@ -1,6 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:cameraviewer/modals/camera_model.dart';
-import 'package:cameraviewer/services/get_camera_hardware.dart';
+import 'package:cameraviewer/services/platform_channels.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'camerapreview.dart';

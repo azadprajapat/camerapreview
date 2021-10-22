@@ -1,5 +1,4 @@
 package prajapat.cameraviewer
-
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -10,6 +9,7 @@ import android.os.Build
 import android.os.Handler
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
+import android.media.MediaPlayer
 import io.flutter.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -29,6 +29,16 @@ class MainActivity : FlutterActivity() {
                     if (call.method == "cameradata") {
                         startCameraSession(result);
                     }
+                    if(call.method=="audio"){
+                        play_audio();
+                    }
+                    if(call.method=="volume"){
+                        val volume = call.argument<Int>("vol")
+                        adjust_volume(volume)
+                    }
+                    if(call.method=="stop"){
+                        stop_audio();
+                    }
                 }
     }
 
@@ -36,6 +46,21 @@ class MainActivity : FlutterActivity() {
         private const val CHANNEL = "get"
     }
 
+    var mediaPlayer: MediaPlayer? = null
+    fun play_audio(){
+        mediaPlayer = MediaPlayer.create(context, R.raw.beep2);
+        mediaPlayer?.setLooping(true);
+        mediaPlayer?.start();
+
+    }
+    fun stop_audio(){
+        mediaPlayer?.stop();
+    }
+    fun adjust_volume(currVolume:Int?){
+        val maxVolume = 50
+        val log1 = ((Math.log(maxVolume - currVolume!!.toDouble()) / Math.log(maxVolume.toDouble())) as Double).toFloat()
+        mediaPlayer?.setVolume(log1, log1)
+    }
     private fun startCameraSession(result: MethodChannel.Result) {
         val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
         if (cameraManager.cameraIdList.isEmpty()) {

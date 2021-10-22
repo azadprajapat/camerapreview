@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:cameraviewer/modals/models.dart';
 import 'package:cameraviewer/modals/camera_model.dart';
 import 'dart:ui' as ui;
@@ -42,6 +43,8 @@ class MyPainter extends CustomPainter{
 
 
    void paint(Canvas canvas, Size size) {
+    if(capture_point==null)
+        return;
     Paint paint=new Paint()
         ..color=Color.fromRGBO(97, 97, 97, 1)
         ..strokeWidth=1;
@@ -95,7 +98,8 @@ class MyPainter extends CustomPainter{
 
           var cx1 = 2*tan((A-sensor.azimuth)*pi/360)*model.focal_length/w_f+screen.width/2;
           var cy1 =  2*tan((sensor.pitch-E)*pi/360)*model.focal_length/h_f+screen.height/2;
-
+          if(sensor.azimuth-A>120||sensor.azimuth-A<-120)
+            continue;
           var l_t_a = A-model.hfv/2;
           var l_t_e = E+ model.vfv/2;
           var r_b_a = A+model.hfv/2;
@@ -105,7 +109,8 @@ class MyPainter extends CustomPainter{
           var r_b_x = 2*tan((r_b_a-sensor.azimuth)*pi/360)*model.focal_length/w_f+screen.width/2;
           var r_b_y =  2*tan((sensor.pitch-r_b_e)*pi/360)*model.focal_length/h_f+screen.height/2;
          canvas.drawImageNine(img[i], Rect.fromPoints(Offset(cx1,cy1), Offset(cx1,cy1)), Rect.fromPoints(Offset(l_t_x,l_t_y), Offset(r_b_x,r_b_y)), Captured);
-       //   canvas.drawImageNine(img[i], Rect.fromPoints(Offset(cx1,cy1), Offset(cx1,cy1)), Rect.fromPoints(Offset(cx1-img[i].width/2,cy1-img[i].height/2), Offset(cx1+img[i].width/2,cy1+img[i].height/2)), Captured);
+
+         //  canvas.drawImageNine(img[i], Rect.fromPoints(Offset(cx1,cy1), Offset(cx1,cy1)), Rect.fromPoints(Offset(cx1-img[i].width/2,cy1-img[i].height/2), Offset(cx1+img[i].width/2,cy1+img[i].height/2)), Captured);
            //   canvas.drawImageNine(img[i], Rect.fromPoints(Offset(cx1,cy1), Offset(cx1,cy1)), Rect.fromPoints(Offset(l_t_x,l_t_y), Offset(r_b_x,r_b_y)), Captured);
 
          }
