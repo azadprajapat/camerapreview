@@ -23,18 +23,29 @@ class _ResultPageState extends State<ResultPage> {
       DeviceOrientation.landscapeRight,
       DeviceOrientation.landscapeLeft,
     ]);
-    write_data();
   }
   void write_data()async{
     final pdf = pw.Document();
     pdf.addPage(
       pw.Page(
-        build: (pw.Context context) => pw.Center(
-            child: pw.GridView(
-                crossAxisCount: 2,
-                children: List.generate(widget.data["data"].length, (index) => pw.Text("${widget.data["data"][index].time}->${widget.data["data"][index].result}"))
+        build: (pw.Context context) => pw.Column(
+
+          children: [
+            pw.Flexible(
+              child: pw.Header(
+                  child: pw.Text("Date of analysis:${DateTime.now().toString().substring(0,11)}  Irradiance : ${(widget.data["irradiance"]*100).toInt()/100}kwh/sq.m Percent sunshine: ${widget.data["percent"]}%")
+              ),
+              flex: 1
+            ),
+            pw.Flexible(
+              flex: 20,
+              child: pw.GridView(
+                  crossAxisCount: 2,
+                  children: List.generate(widget.data["data"].length, (index) => pw.Text("${widget.data["data"][index].time}->${widget.data["data"][index].result==1?"Yes":"No"}"))
+              ),
             )
-        ),
+          ]
+        )
       ),
     );
     final path =
@@ -77,16 +88,18 @@ class _ResultPageState extends State<ResultPage> {
                         ]),
                   ),
                   Center(
-                    child: Text("Day result from 9 am to 6pm  : ${widget.data["result"]}%"),
+                    child: Text("visibility for today from 5 am to 8pm: ${widget.data["percent"]}%"),
+                  ),
+                  Center(
+                    child: Text("Irradiance for today: ${widget.data["irradiance"]} Kwh/Sq.m"),
                   )
 
                 ]),
                 Align(
-                  alignment: Alignment(0.95,0.95),
+                  alignment: Alignment(0.95,-0.95),
                   child: FloatingActionButton(
                     child: Icon(Icons.share),
                     onPressed: (){
-                      print("hello world");
                       write_data();
                     },
                   ),

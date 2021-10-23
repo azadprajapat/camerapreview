@@ -89,7 +89,24 @@ class SunPosition {
     azimuth=azimuth*180/pi;
     zenith=zenith*180/pi;
     azimuth=180+azimuth;
-    zenith=90-zenith;
-    return SunPos(azimuth: azimuth,elevation: zenith);
+    return SunPos(azimuth: azimuth,elevation: 90-zenith);
   }
+
+}
+//solar insolation
+class SolarInsolation {
+  double calculate(int day,double zenith,int interval){
+    int Gsc=1367;
+    double Gon=Gsc*(1+(0.033)*cos((360*day*pi/(365*180))));
+    double Go=Gon*cos(zenith*pi/180);
+   // double transmittance = 0.4560 +0.3566*(n/N) + 0.1874*pow(n/N,2);
+   //  if(n==0)
+   //    transmittance=0.2640;
+    double irradiance = Go*interval;
+    return irradiance;
+
+    // note this irradiance is without considering transmittance it will be added to it once we got the full day result
+    // because either it will be two time process;
+  }
+
 }

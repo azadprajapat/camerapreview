@@ -28,20 +28,21 @@ class Camera_Preview extends StatefulWidget {
 }
 
 class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProviderStateMixin {
-
+  String help_text="";
   //camera and image controller
   int total_count=0;
+  bool isprocessing =false;
   List<Points> capture_points =[];
   Points curr_capture_point;
   List<ui.Image> imgframelist=[];
 
   CAM.CameraController _cameraController;
   Future<void> _initialiseControllerFuture;
+  Timer capture_timer;
 
   int list_index;
   int number = 0;
   List<Image_set> image_collection = [];
-
   //senors
   MobileSensor sensor_data=MobileSensor();
   StreamSubscription<dynamic> _angles_stream;
@@ -75,6 +76,8 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
     if (_compass_stream != null) {
       _compass_stream.cancel();
     }
+    socket.disconnect();
+    player.StopAudio();
     _cameraController.dispose();
     super.dispose();
   }
@@ -82,7 +85,7 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
   Widget build(BuildContext context) {
     return Scaffold(
         backgroundColor: Color.fromRGBO(97, 97, 97, 1),
-        body: Stack(
+        body: isprocessing?Center(child: CircularProgressIndicator(),):Stack(
           children: <Widget>[
             Container(
               alignment: Alignment.topCenter,
@@ -133,24 +136,36 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
             Center(
               child: Container(
                 alignment: Alignment.bottomCenter,
-                padding: EdgeInsets.only(bottom: 30),
-                child: number!=0?CustomPaint(
+                padding: EdgeInsets.only(bottom: 30,),
+                child: number!=0?number==total_count?RaisedButton(
+                    child: Text('Process Images'),
+                    onPressed: ()async{
+                      if(if_all_image_received()){
+                        setState(() {
+                          isprocessing=true;
+                        });
+                        Future.delayed(Duration(seconds: 1));
+                        print("Transfering to analysis model");
+                        var data=  await   ImageProcessing().calculate(image_collection,capture_points,
+                                (String res) async{
+                              print("status:"+res);
+                            });
+                        print("done 100 %");
+                        socket.disconnect();
+                        await Navigator.push(context, MaterialPageRoute(builder: (_)=>ResultPage(data)));
+                        setState(() {
+                          isprocessing=false;
+                        });
+
+                      }else{
+                        Scaffold.of(context).showSnackBar(SnackBar(content: Text("please wait images are not processed for analysis")));
+
+                        print('uh oh not all images are with us');
+                      }
+                    }):CustomPaint(
                     foregroundPainter: ProgressPainer(number/total_count),
                     child:   GestureDetector(
                       onTap: ()async{
-                        if(if_all_image_received()){
-                          print("Transfering to analysis model");
-                          var data=  await   ImageProcessing().calculate(image_collection,capture_points,
-                                  (String res) async{
-                                print("status:"+res);
-                              });
-                          print("done 100 %");
-                          socket.disconnect();
-                          await Navigator.push(context, MaterialPageRoute(builder: (_)=>ResultPage(data)));
-
-                        }else{
-                          print('uh oh not all images are with us');
-                        }
                       },
                       child: Container(
                         height: 60,
@@ -168,7 +183,7 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
                       ),
                     )
                 ):Container(
-                  child: Text("Point the camera at the dot",style: TextStyle(color: Colors.white,fontSize: 20,),),
+                  child: Text(help_text,style: TextStyle(color: Colors.white,fontSize: 20,),textAlign: TextAlign.center,),
                 ),
               ),
             ),
@@ -186,6 +201,7 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
     if(await File(path).exists()){
       await File(path).delete();
     }
+    Future.delayed(Duration(seconds: 1));
     await _cameraController.takePicture(path);
     // final result = await ImageGallerySaver.saveImage(File(path).readAsBytesSync(),quality: 100,name: path.split("/").last);
 
@@ -202,7 +218,7 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
       if(number!=total_count) {
         curr_capture_point = capture_points[number];
       }else{
-
+        capture_timer.cancel();
         curr_capture_point = capture_points[(total_count/2).toInt()];
         player.StopAudio();
       }
@@ -224,7 +240,7 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
     curr_capture_point =capture_points[0];
   }
   void initiate_image_stream(){
-    socket.initiate();
+    socket.initiate(context);
     image_stream=socket.streamSocket.stream;
     image_stream.listen((event) {
       image_collection.forEach((element) {
@@ -257,18 +273,20 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
   void initate_audio_feature(){
     if(curr_capture_point==null)
         return;
-    Timer.periodic(Duration(seconds: 1), (timer) async{
+    capture_timer=Timer.periodic(Duration(seconds: 1), (timer) async{
 
       double distance= pow((curr_capture_point.A-sensor_data.azimuth),2)+pow((curr_capture_point.E-sensor_data.pitch),2);
       print(distance);
       if(distance<2000) {
-
+        setState(() {
+          help_text="Hold for a second on the green dot";
+        });
           player.Adjust_volume(0);
-          print("changing volume 40");
         } else {
+        setState(() {
+          help_text="Rotate the device following arrows";
+        });
           player.Adjust_volume(48);
-
-          print("changing volume 25");
         }
         var current_A = curr_capture_point.A;
         var current_E = curr_capture_point.E;
@@ -276,10 +294,10 @@ class _Camera_PreviewState extends State<Camera_Preview> with SingleTickerProvid
             current_A - sensor_data.azimuth >= -1 &&
             current_E - sensor_data.pitch >= -1 &&
             current_E - sensor_data.pitch <= 1 && sensor_data.roll == 0) {
+
           await TakePhoto(current_A, current_E, context);
           print("# STATUS 200 PHOTO CAPTURED");
-        }
-    });
+        }     });
   }
   void set_player()async{
     player.play_audio();

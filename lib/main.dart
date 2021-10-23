@@ -3,6 +3,7 @@ import 'package:cameraviewer/modals/camera_model.dart';
 import 'package:cameraviewer/services/platform_channels.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'camerapreview.dart';
 
 void main() async {
@@ -10,6 +11,14 @@ void main() async {
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
+  Permission camera = Permission.camera;
+  Permission record = Permission.location;
+  Permission media = Permission.microphone;
+  Permission storage = Permission.storage;
+  await camera.request();
+  await record.request();
+  await media.request();
+  await storage.request();
 
   final cameras = await availableCameras();
   final firstCamera=cameras.first;
@@ -41,6 +50,7 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+
             RaisedButton(
                 child: Text('Start Analysis'),
                 onPressed: ()async{

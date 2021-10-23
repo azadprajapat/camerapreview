@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/material.dart';
 import 'package:image/image.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -26,10 +27,10 @@ class ImageSocket{
 
   final SOCKET_SERVER = 'http://172.26.126.103:5000';
   IO.Socket socket;
-  void initiate()async{
+  void initiate(context)async{
     socket = IO.io(SOCKET_SERVER,IO.OptionBuilder().setTransports(['websocket']).build());
     print("initiating connection");
-    socket.onConnectError((data) => print(data));
+    socket.onConnectTimeout((data) => Scaffold.of(context).showSnackBar(SnackBar(content: Text("Please check your connection with IITK Network"))));
     socket.onConnectError((data) => print(data));
     socket.onConnecting((data) => print("Trying to connect"));
     socket.onConnect((_) {
@@ -49,7 +50,7 @@ class ImageSocket{
   bool isrunning() => socket.connected;
   void send_image(File file,name){
     while(!isrunning()&&try_count<10){
-      initiate();
+      //initiate();
       try_count++;
     }
     socket.emit('image-upload',{

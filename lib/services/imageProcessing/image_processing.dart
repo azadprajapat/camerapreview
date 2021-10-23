@@ -14,11 +14,15 @@ import 'dart:ui';
 import 'package:image/image.dart' as IMG;
 import '../platform_channels.dart';
 class ImageProcessing{
+  int interval = 6; //minute;
+
+  DateTime sunrise = new DateTime(DateTime.now().year,DateTime.now().month,DateTime.now().day,5); //5am
+  DateTime sunset = new DateTime(DateTime.now().year,DateTime.now().month,DateTime.now().day,20); // 8pm
+
+  int max_sunshine_hours = 15; // 5am to 8pm
 
   Future<Map> calculate(List<Image_set> image_collection,List<Points> angles,Function callback)async{
     callback("reading camera hardware data");
-    print(image_collection[0].isbinary);
-    print(image_collection[0].binary_path);
     image_collection.sort((a,b){
       int image_a= int.parse(a.name.substring(3));
       int image_b=int.parse(b.name.substring(3));
@@ -33,40 +37,41 @@ class ImageProcessing{
     return full_day_result(result_matrix);
   }
    Future<Map> full_day_result(List<List<int>> result_matrix)async{
-
     List<ChartData> data_list=[];
+    double irradiance=0;
     //get lat and long of user;
-     DateTime today_morning = new DateTime(DateTime.now().year,DateTime.now().month,DateTime.now().day,9);
-    DateTime today_evening = new DateTime(DateTime.now().year,DateTime.now().month,DateTime.now().day,17);
-       Position user_location =await fetch_user_location();
-    while(today_morning.isBefore(today_evening)){
-      String tme ="${today_morning.hour}:${today_morning.minute}";
-      if(today_morning.minute==0){
-        print(tme);
-      }
+    int sun_visible_counts=0;
+     DateTime today_morning = sunrise;
+     DateTime today_evening = sunset;
+     Position user_location =await fetch_user_location();
+     while(today_morning.isBefore(today_evening)){
+       String tme ="${today_morning.hour}:${today_morning.minute}";
        ChartData current_time_data;
        SunPos position = await SunPosition().calculate(SunPosEstimateData(time: today_morning,lat:user_location.latitude.toString() ,long:user_location.longitude.toString() ));
+
        if(position.azimuth<0||position.azimuth>270||position.elevation<0||position.elevation>90){
          current_time_data=ChartData(result: 0,time: tme);
-         // print("result added 0 for ${tme}");
+
          data_list.add(current_time_data);
        }
        else{
-         current_time_data=ChartData(result: result_matrix[(position.azimuth*10).toInt()][(position.elevation*10).toInt()],time: tme);
-         // print("result added original ${result_matrix[(position.azimuth*10).toInt()][(position.elevation*10).toInt()]} for ${tme}");
+         int visibility =result_matrix[(position.azimuth*10).toInt()][(position.elevation*10).toInt()];
+         if(visibility==1){
+           sun_visible_counts++;
+           int day_of_year = sunrise.day + (sunrise.month -1)*30;
+           irradiance+= SolarInsolation().calculate(day_of_year, 90 - position.elevation, interval);
+         }
+         current_time_data=ChartData(result: visibility,time: tme);
          data_list.add(current_time_data);
        }
-      today_morning = today_morning.add(Duration(minutes: 5));
+      today_morning = today_morning.add(Duration(minutes: interval));
     }
-    int count=0;
-    for(int i=0;i<data_list.length;i++){
-      if(data_list[i].result==1)
-        count++;
-    }
-    double res = count*100.0/data_list.length;
-     //  return 0;
+    double visibility_fraction = sun_visible_counts/data_list.length;
+     double transmittance = 0.4560 +0.3566*(visibility_fraction) + 0.1874*pow(visibility_fraction,2);
+     irradiance =(irradiance*transmittance)/(60*1000);  //w*s/sq.m -> kw*h/sq.m
+      //  return 0;
    //  return result_matrix[(position.azimuth*10).toInt()][(position.elevation*10).toInt()];
-     return {"result":res,"data":data_list};
+     return {"percent":(visibility_fraction*100).toInt(),"data":data_list,"irradiance":irradiance};
   }
 
 
